@@ -1,0 +1,1 @@
+- [OpenMeteo adapter recovery](memory/openmeteo-adapter-recovery.md) — Recovered the broken OpenMeteo adapter implementation and fixed all tests
