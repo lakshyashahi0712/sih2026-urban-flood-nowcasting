@@ -319,6 +319,39 @@ class RasterEngine:
             raise RuntimeError("Stream mask not generated. Call apply_threshold first.")
         return self._stream_mask.copy()
 
+    def get_flow_direction(self) -> np.ndarray:
+        """
+        Get the D8 flow direction array.
+
+        Returns:
+            Uint8 numpy array with D8 direction encoding (0 for sink/no flow).
+        """
+        if self._flow_dir is None:
+            raise RuntimeError("Flow direction not computed. Call compute_flow_direction first.")
+        return self._flow_dir.copy()
+
+    def get_drainage_area(self) -> np.ndarray:
+        """
+        Get the drainage area array in square meters.
+
+        Returns:
+            Float64 numpy array of drainage area (m²).
+        """
+        if self._drainage_area is None:
+            raise RuntimeError("Drainage area not computed. Call compute_flow_accumulation and apply_threshold first.")
+        return self._drainage_area.copy()
+
+    def get_filled_dem(self) -> np.ndarray:
+        """
+        Get the filled DEM array (after depression filling).
+
+        Returns:
+            Float64 numpy array of elevation values.
+        """
+        if self._filled_dem is None:
+            raise RuntimeError("DEM not conditioned. Call condition_dem first.")
+        return self._filled_dem.copy()
+
     def get_metadata(self) -> dict:
         """
         Get metadata about the processed raster.
