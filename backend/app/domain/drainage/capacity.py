@@ -10,7 +10,7 @@ from dataclasses import dataclass
 from typing import Dict
 from pydantic import BaseModel, Field, field_validator
 
-from app.domain.drainage.models import DrainageChannel, Provenance
+from backend.app.domain.drainage.models import DrainageChannel, Provenance
 
 
 class ChannelHydraulicParameters(BaseModel):

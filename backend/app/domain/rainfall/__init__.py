@@ -1,13 +1,13 @@
 """Rainfall domain models and exceptions."""
 from __future__ import annotations
 
-from app.domain.rainfall.models import (
+from backend.app.domain.rainfall.models import (
     RainfallRecord,
     RainfallSeries,
     RainfallStatus,
     SourceType,
 )
-from app.domain.rainfall.exceptions import (
+from backend.app.domain.rainfall.exceptions import (
     RainfallAdapterError,
     RainfallAdapterTimeout,
     RainfallAdapterHTTPError,

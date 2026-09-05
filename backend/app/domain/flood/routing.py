@@ -9,7 +9,7 @@ import numpy as np
 from typing import Dict, Tuple, Optional
 from dataclasses import dataclass
 
-from app.domain.drainage.models import Provenance
+from backend.app.domain.drainage.models import Provenance
 
 
 @dataclass

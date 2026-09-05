@@ -1,0 +1,179 @@
+:root {
+  --text-primary: #2c3e50;
+  --text-secondary: #34495e;
+  --text-muted: #7f8c8d;
+  --accent-blue: #3498db;
+  --accent-green: #27ae60;
+  --accent-orange: #e67e22;
+  --accent-red: #e74c3c;
+  --bg-primary: #ffffff;
+  --bg-secondary: #ecf0f1;
+  --border-light: #bdc3c7;
+  --shadow-light: 0 2px 4px rgba(0,0,0,0.1);
+  --shadow-medium: 0 4px 8px rgba(0,0,0,0.15);
+
+  --font-sans: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  --font-mono: 'Consolas', 'Courier New', monospace;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html, body, #root {
+  height: 100%;
+  font-family: var(--font-sans);
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+}
+
+body {
+  line-height: 1.6;
+}
+
+/* Header Styles */
+.App-header {
+  background-color: var(--accent-blue);
+  color: white;
+  padding: 1.5rem;
+  text-align: center;
+  box-shadow: var(--shadow-medium);
+}
+
+.App-header h1 {
+  font-size: 2rem;
+  margin-bottom: 0.5rem;
+  font-weight: 600;
+}
+
+.App-header p {
+  font-size: 1.1rem;
+  opacity: 0.9;
+}
+
+/* Main Content */
+main {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  align-items: stretch;
+  padding: 2rem;
+  gap: 1.5rem;
+}
+
+/* Map Container */
+.map-container {
+  position: relative;
+  width: 100%;
+  max-width: 800px;
+  height: 600px;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: var(--shadow-medium);
+  background-color: var(--bg-secondary);
+}
+
+.map {
+  width: 100%;
+  height: 100%;
+}
+
+/* Loading and Error States */
+.loading, .error {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background-color: rgba(255, 255, 255, 0.9);
+  padding: 1.5rem 2rem;
+  border-radius: 8px;
+  text-align: center;
+  box-shadow: var(--shadow-medium);
+  z-index: 1000;
+}
+
+.loading {
+  color: var(--text-primary);
+}
+
+.error {
+  background-color: rgba(255, 240, 240, 0.9);
+  color: var(--accent-red);
+  border: 1px solid var(--accent-red);
+}
+
+/* Legend Styles */
+.map-legend {
+  position: absolute;
+  bottom: 1.5rem;
+  left: 1.5rem;
+  background-color: rgba(255, 255, 255, 0.95);
+  padding: 1rem;
+  border-radius: 6px;
+  box-shadow: var(--shadow-light);
+  z-index: 1000;
+  max-width: 200px;
+  font-size: 0.9rem;
+}
+
+.legend-title {
+  font-weight: 600;
+  margin-bottom: 0.75rem;
+  text-align: center;
+  color: var(--text-primary);
+  font-size: 1rem;
+}
+
+.legend-items {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.legend-color {
+  width: 20px;
+  height: 20px;
+  border-radius: 3px;
+  border: 1px solid var(--border-light);
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  main {
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .map-container {
+    max-width: 100%;
+    height: 500px;
+  }
+
+  .App-header h1 {
+    font-size: 1.5rem;
+  }
+
+  .App-header p {
+    font-size: 1rem;
+  }
+}
+
+/* Utility Classes */
+.text-center {
+  text-align: center;
+}
+
+.mt-1 { margin-top: 0.5rem; }
+.mt-2 { margin-top: 1rem; }
+.mt-3 { margin-top: 1.5rem; }
+.mb-1 { margin-bottom: 0.5rem; }
+.mb-2 { margin-bottom: 1rem; }
+.mb-3 { margin-bottom: 1.5rem; }

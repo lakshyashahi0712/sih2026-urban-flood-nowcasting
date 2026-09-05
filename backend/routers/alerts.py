@@ -5,11 +5,11 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from datetime import datetime, timezone
 
-import models
-import schemas
-from database import get_db
-from service import alert_to_dict
-from websocket_manager import manager
+from backend import models
+from backend import schemas
+from backend.database import get_db
+from backend.service import alert_to_dict
+from backend.websocket_manager import manager
 
 router = APIRouter(prefix="/api/alerts", tags=["alerts"])
 

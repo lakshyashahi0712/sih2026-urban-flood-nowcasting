@@ -12,9 +12,12 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 
-from database import init_db
-from routers import sensors, alerts, devices, dashboard
-from websocket_manager import manager
+from backend.database import init_db
+from backend.routers import sensors, alerts, devices, dashboard, flood
+try:
+    from backend.websocket_manager import manager
+except ImportError:
+    from websocket_manager import manager
 
 
 @asynccontextmanager
@@ -43,6 +46,7 @@ app.include_router(sensors.router)
 app.include_router(alerts.router)
 app.include_router(devices.router)
 app.include_router(dashboard.router)
+app.include_router(flood.router)
 
 
 @app.get("/")

@@ -6,8 +6,12 @@ import numpy as np
 from affine import Affine
 from typing import Dict, List, Tuple, Optional
 
-from app.domain.drainage.models import DrainageChannel, DrainageNode, DrainageNetwork, NodeType, Provenance
-from app.infrastructure.drainage.raster_engine import RasterEngine
+try:
+    from backend.app.domain.drainage.models import DrainageChannel, DrainageNode, DrainageNetwork, NodeType, Provenance
+    from backend.app.infrastructure.drainage.raster_engine import RasterEngine
+except ImportError:
+    from app.domain.drainage.models import DrainageChannel, DrainageNode, DrainageNetwork, NodeType, Provenance
+    from app.infrastructure.drainage.raster_engine import RasterEngine
 
 
 class NetworkBuilder:

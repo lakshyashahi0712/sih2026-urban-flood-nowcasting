@@ -3,9 +3,9 @@ from datetime import datetime, timezone
 
 from sqlalchemy.orm import Session
 
-import models
-from ml_anomaly import detector
-from websocket_manager import manager
+from backend import models
+from backend.ml_anomaly import detector
+from backend.websocket_manager import manager
 
 
 def register_device(db: Session, reading) -> models.Device:
