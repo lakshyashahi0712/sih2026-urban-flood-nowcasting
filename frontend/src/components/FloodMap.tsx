@@ -7,26 +7,31 @@ setWorkerUrl(workerUrl);
 
 type ForecastHorizon = 'NOW' | '+1h' | '+2h' | '+3h';
 
-interface RainfallRecordAPI {
+interface HorizonStateAPI {
+  horizon: ForecastHorizon;
+  lead_time: string;
   timestamp: string;
   interval_end: string;
   rainfall_mm: number;
-  source: string;
-  source_type: string;
-  resolution_minutes: number;
-  acquired_at: string;
-  forecast_lead_minutes: number;
-  status: 'LIVE' | 'STALE' | 'UNAVAILABLE';
-  average_intensity_mm_per_hour: number;
+  timestep_hours: number;
+  max_depth_m: number;
+  flooded_area_m2: number;
+  total_flooded_area_m2: number;
+  flood_volume_m3: number;
+  total_flood_volume_m3: number;
+  features: any[];
+  geojson: any;
 }
 
-interface RainfallSeriesAPI {
+interface FloodForecastAPIResponse {
   source: string;
-  acquired_at: string;
-  record_count: number;
-  resolution_minutes: number;
-  records: RainfallRecordAPI[];
+  source_type: string;
+  acquired_at: string | null;
+  status: 'LIVE' | 'STALE' | 'UNAVAILABLE';
+  provenance: Record<string, string>;
+  horizons: HorizonStateAPI[];
 }
+
 
 interface HorizonData {
   key: ForecastHorizon;
@@ -126,7 +131,7 @@ const FloodMap = () => {
   const [horizons, setHorizons] = useState<HorizonData[]>(DEFAULT_HORIZONS);
   const [rainfallStatus, setRainfallStatus] = useState<'LIVE' | 'STALE' | 'UNAVAILABLE'>('UNAVAILABLE');
   const [rainfallAcquiredAt, setRainfallAcquiredAt] = useState<string | null>(null);
-  const [floodData, setFloodData] = useState<any>(null);
+  const [forecastData, setForecastData] = useState<FloodForecastAPIResponse | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -134,113 +139,71 @@ const FloodMap = () => {
   horizonsRef.current = horizons;
   const activeHorizonRef = useRef<ForecastHorizon>(activeHorizon);
   activeHorizonRef.current = activeHorizon;
+  const forecastDataRef = useRef<FloodForecastAPIResponse | null>(null);
+  forecastDataRef.current = forecastData;
 
   const currentHorizonConfig = horizons.find(h => h.key === activeHorizon) || horizons[1];
 
-  const runSimulationForHorizon = useCallback(async (horizon: ForecastHorizon, horizonList: HorizonData[]) => {
-    const config = horizonList.find(h => h.key === horizon);
-    if (!config) return;
-
-    if (config.rainfallMm === null) {
-      setError(`No rainfall forecast available for ${horizon}`);
-      setFloodData(null);
-      const map = mapInstanceRef.current;
-      if (map) {
-        const source = map.getSource('flood-depth') as GeoJSONSource | undefined;
-        if (source) {
-          source.setData({ type: 'FeatureCollection', features: [] });
-        }
+  const applyHorizonToMap = useCallback((horizon: ForecastHorizon, data: FloodForecastAPIResponse | null) => {
+    const map = mapInstanceRef.current;
+    if (!map) return;
+    const targetState = data?.horizons?.find(h => h.horizon === horizon);
+    const source = map.getSource('flood-depth') as GeoJSONSource | undefined;
+    if (source) {
+      if (targetState && targetState.geojson) {
+        source.setData(targetState.geojson);
+      } else {
+        source.setData({ type: 'FeatureCollection', features: [] });
       }
-      return;
-    }
-
-    setLoading(true);
-    setError(null);
-
-    try {
-      const response = await fetch('http://localhost:8000/flood/model', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          rainfall_mm: config.rainfallMm,
-          contributing_area_m2: 5000.0,
-          runoff_coefficient: 0.7,
-          timestep_hours: 1.0, // Fixed 60-min model timestep for simulation
-          threshold_area_m2: 10.0
-        })
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP error ${response.status}`);
-      }
-
-      const data = await response.json();
-      setFloodData(data);
-
-      const map = mapInstanceRef.current;
-      if (map) {
-        const source = map.getSource('flood-depth') as GeoJSONSource | undefined;
-        if (source) {
-          source.setData(data);
-        }
-      }
-    } catch (err) {
-      console.error('Error fetching flood data:', err);
-      setError(err instanceof Error ? err.message : 'Unknown network error');
-    } finally {
-      setLoading(false);
     }
   }, []);
 
-  const fetchRainfallAndSimulate = useCallback(async (targetHorizon: ForecastHorizon) => {
-    let updatedHorizons = horizonsRef.current;
+  const fetchForecastEvolution = useCallback(async (targetHorizon: ForecastHorizon = '+1h') => {
+    setLoading(true);
+    setError(null);
     try {
-      const res = await fetch('http://localhost:8000/rainfall/mumbai?use_cache=true');
+      const res = await fetch('http://localhost:8000/flood/forecast?use_cache=true');
       if (!res.ok) {
-        throw new Error(`Rainfall API returned HTTP ${res.status}`);
+        throw new Error(`Flood forecast API returned HTTP ${res.status}`);
       }
-      const data: RainfallSeriesAPI = await res.json();
-      if (!data.records || !Array.isArray(data.records) || data.records.length === 0) {
-        throw new Error('Received empty or malformed rainfall records from Open-Meteo');
+      const data: FloodForecastAPIResponse = await res.json();
+      if (!data.horizons || !Array.isArray(data.horizons) || data.horizons.length === 0) {
+        throw new Error('Received empty forecast horizons from backend');
       }
 
-      const rec0 = data.records[0];
-      const status = (rec0?.status as 'LIVE' | 'STALE') || 'LIVE';
-      setRainfallStatus(status);
+      setForecastData(data);
+      forecastDataRef.current = data;
+      setRainfallStatus((data.status as 'LIVE' | 'STALE') || 'LIVE');
       setRainfallAcquiredAt(data.acquired_at || null);
 
-      const keys: ForecastHorizon[] = ['NOW', '+1h', '+2h', '+3h'];
-      const periodDisplays = [
-        'Current Hour Baseline',
-        '+1 Hour Outlook (T+1h)',
-        '+2 Hours Outlook (T+2h)',
-        '+3 Hours Outlook (T+3h)',
-      ];
-      const leadTimes = ['0h', '+1h', '+2h', '+3h'];
+      const periodDisplays: Record<ForecastHorizon, string> = {
+        'NOW': 'Current Hour Baseline',
+        '+1h': '+1 Hour Outlook (T+1h)',
+        '+2h': '+2 Hours Outlook (T+2h)',
+        '+3h': '+3 Hours Outlook (T+3h)',
+      };
 
-      updatedHorizons = keys.map((key, idx) => {
-        const rec = data.records[idx];
-        return {
-          key,
-          label: key,
-          periodDisplay: periodDisplays[idx],
-          leadTime: leadTimes[idx],
-          rainfallMm: rec != null && typeof rec.rainfall_mm === 'number' ? rec.rainfall_mm : null,
-          timestamp: rec?.timestamp,
-          intervalEnd: rec?.interval_end,
-        };
-      });
+      const updatedHorizons: HorizonData[] = data.horizons.map(h => ({
+        key: h.horizon,
+        label: h.horizon,
+        periodDisplay: periodDisplays[h.horizon] || `${h.horizon} Outlook`,
+        leadTime: h.lead_time,
+        rainfallMm: typeof h.rainfall_mm === 'number' ? h.rainfall_mm : null,
+        timestamp: h.timestamp,
+        intervalEnd: h.interval_end,
+      }));
 
       setHorizons(updatedHorizons);
       horizonsRef.current = updatedHorizons;
-    } catch (err) {
-      console.error('Rainfall fetch failed:', err);
-      setRainfallStatus('UNAVAILABLE');
-      setError(err instanceof Error ? err.message : 'Rainfall API unavailable');
-    }
 
-    await runSimulationForHorizon(targetHorizon, updatedHorizons);
-  }, [runSimulationForHorizon]);
+      applyHorizonToMap(targetHorizon, data);
+    } catch (err) {
+      console.error('Forecast evolution fetch failed:', err);
+      setError(err instanceof Error ? err.message : 'Flood forecast unavailable');
+    } finally {
+      setLoading(false);
+    }
+  }, [applyHorizonToMap]);
 
   // Initialize Map
   useEffect(() => {
@@ -370,7 +333,7 @@ const FloodMap = () => {
       });
 
       // Trigger initial data load
-      fetchRainfallAndSimulate('+1h');
+      fetchForecastEvolution('+1h');
     });
 
     return () => {
@@ -380,7 +343,7 @@ const FloodMap = () => {
       newMap.remove();
       mapInstanceRef.current = null;
     };
-  }, [fetchRainfallAndSimulate]);
+  }, [fetchForecastEvolution]);
 
   // Handle horizon change
   const handleHorizonChange = (h: ForecastHorizon) => {
@@ -388,7 +351,7 @@ const FloodMap = () => {
       popupRef.current.remove();
     }
     setActiveHorizon(h);
-    runSimulationForHorizon(h, horizonsRef.current);
+    applyHorizonToMap(h, forecastDataRef.current);
   };
 
   // Operational view navigation
@@ -410,9 +373,10 @@ const FloodMap = () => {
     });
   };
 
-  // Extract statistics from floodData summary
-  const maxDepthM = floodData?.summary?.max_depth_m ?? 0;
-  const floodedAreaM2 = floodData?.summary?.total_flooded_area_m2 ?? 0;
+  // Extract statistics for active horizon from forecastData
+  const activeState = forecastData?.horizons?.find(h => h.horizon === activeHorizon);
+  const maxDepthM = activeState?.max_depth_m ?? 0;
+  const floodedAreaM2 = activeState?.flooded_area_m2 ?? 0;
   const riskInfo = getRiskCategory(maxDepthM);
 
   return (
