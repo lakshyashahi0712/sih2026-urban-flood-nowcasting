@@ -7,8 +7,12 @@ from typing import Optional
 from fastapi import APIRouter, HTTPException, Query, Request
 from pydantic import BaseModel, Field
 
-from app.domain.rainfall.models import RainfallRecord, RainfallStatus, SourceType
-from app.infrastructure.rainfall.open_meteo import OpenMeteoAdapter
+try:
+    from backend.app.domain.rainfall.models import RainfallRecord, RainfallStatus, SourceType
+    from backend.app.infrastructure.rainfall.open_meteo import OpenMeteoAdapter
+except ImportError:
+    from app.domain.rainfall.models import RainfallRecord, RainfallStatus, SourceType
+    from app.infrastructure.rainfall.open_meteo import OpenMeteoAdapter
 
 router = APIRouter(prefix="/rainfall", tags=["rainfall"])
 
@@ -100,7 +104,7 @@ async def get_rainfall_status() -> dict:
     cached = adapter.cache.get()
     return {
         "cache_status": "LIVE" if cached else "EMPTY",
-        "cached_at": adapter.cache._cached_at.isoformat() if adapter.cache._cached_at else None,
+        "cached_at": adapter.cache._timestamp.isoformat() if adapter.cache._timestamp else None,
         "cache_ttl_minutes": 30,  # from open_meteo module
         "source": "open-meteo",
         "source_type": "forecast",

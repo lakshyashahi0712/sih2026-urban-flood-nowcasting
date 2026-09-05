@@ -310,30 +310,60 @@ async def test_cache_empty_returns_none(adapter):
 
 
 @pytest.mark.asyncio
-async def test_negative_lead_time_raises_exception(adapter):
-    """Test that negative forecast lead time raises RainfallAdapterInvalidTimestamp."""
-    # Create fixture data with a timestamp in the past relative to acquisition time
+async def test_skips_elapsed_intervals_and_handles_active_hour(adapter):
+    """Test that intervals ending before acquired_at are skipped, and active hour gets lead_minutes=0."""
     data = load_fixture()
-    # Modify first timestamp to be 2 hours before acquisition time
-    # Acquisition time in test is 2026-09-03 12:00:00 UTC
-    # So timestamp should be 2026-09-03 10:00:00 (which would give -120 lead minutes)
-    data["hourly"]["time"][0] = "2026-09-03T10:00"
-
+    # In fixture, timestamps are 2026-09-04T00:00, 01:00, 02:00, 03:00, 04:00, 05:00 local time
+    # In Asia/Kolkata (UTC+5:30):
+    # 2026-09-04T00:00 local = 2026-09-03 18:30 UTC -> interval [18:30, 19:30 UTC)
+    # 2026-09-04T01:00 local = 2026-09-03 19:30 UTC -> interval [19:30, 20:30 UTC)
+    # 2026-09-04T02:00 local = 2026-09-03 20:30 UTC -> interval [20:30, 21:30 UTC)
+    #
+    # Set acquired_at to 2026-09-03 20:00:00 UTC:
+    # - Record 0: ends 19:30 <= 20:00 -> elapsed, should be SKIPPED
+    # - Record 1: starts 19:30, ends 20:30 -> ACTIVE interval (19:30 <= 20:00 < 20:30), lead_minutes should be 0
+    # - Record 2: starts 20:30, ends 21:30 -> FUTURE interval, lead_minutes = 30
     mock_response = Mock()
     mock_response.status_code = 200
     mock_response.json.return_value = data
     mock_response.text = json.dumps(data)
 
     with patch.object(httpx.AsyncClient, "get", return_value=mock_response):
-        # Set acquisition time to 2026-09-03 12:00:00 UTC
         with patch("app.infrastructure.rainfall.open_meteo.datetime") as mock_dt:
-            mock_dt.now.return_value = datetime(2026, 9, 3, 12, 0, 0, tzinfo=timezone.utc)
+            mock_dt.now.return_value = datetime(2026, 9, 3, 20, 0, 0, tzinfo=timezone.utc)
             mock_dt.fromisoformat = datetime.fromisoformat
             mock_dt.timezone.utc = timezone.utc
             mock_dt.timedelta.side_effect = lambda *args, **kwargs: timedelta(*args, **kwargs)
 
-            with pytest.raises(RainfallAdapterInvalidTimestamp) as excinfo:
-                await adapter.fetch(use_cache=False)
+            series = await adapter.fetch(use_cache=False)
 
-            # Verify the exception contains expected message
-            assert "Negative forecast lead time" in str(excinfo.value)
+    # 1 record skipped, 5 remaining
+    assert len(series.records) == 5
+    # First record should now be the active hour (Record 1)
+    active_rec = series.records[0]
+    assert active_rec.forecast_lead_minutes == 0
+    assert active_rec.timestamp == datetime(2026, 9, 3, 19, 30, 0, tzinfo=timezone.utc)
+    # Next record is future
+    future_rec = series.records[1]
+    assert future_rec.forecast_lead_minutes == 30
+
+
+@pytest.mark.asyncio
+async def test_all_elapsed_records_raises_empty_forecast(adapter):
+    """Test that if all records in payload have elapsed, RainfallAdapterEmptyForecast is raised."""
+    data = load_fixture()
+    mock_response = Mock()
+    mock_response.status_code = 200
+    mock_response.json.return_value = data
+    mock_response.text = json.dumps(data)
+
+    # Set acquired_at far in the future so all records are elapsed
+    with patch.object(httpx.AsyncClient, "get", return_value=mock_response):
+        with patch("app.infrastructure.rainfall.open_meteo.datetime") as mock_dt:
+            mock_dt.now.return_value = datetime(2026, 9, 10, 12, 0, 0, tzinfo=timezone.utc)
+            mock_dt.fromisoformat = datetime.fromisoformat
+            mock_dt.timezone.utc = timezone.utc
+            mock_dt.timedelta.side_effect = lambda *args, **kwargs: timedelta(*args, **kwargs)
+
+            with pytest.raises(RainfallAdapterEmptyForecast):
+                await adapter.fetch(use_cache=False)

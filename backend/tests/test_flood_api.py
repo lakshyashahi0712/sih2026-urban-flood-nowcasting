@@ -64,30 +64,22 @@ def create_test_dem(
 
 
 def test_flood_model_no_rainfall():
-    """Test flood model endpoint with zero rainfall."""
-    dem_array, meta = create_test_dem(shape=(3, 3), cell_size=10.0, nodata=None, tilt="se")
-    with tempfile.NamedTemporaryFile(suffix='.tif', delete=False) as tmp:
-        dem_path = tmp.name
-    try:
-        with rio_open(dem_path, 'w', **meta) as dst:
-            dst.write(dem_array, 1)
+    """Test flood model endpoint with zero rainfall (should succeed with zero inundation)."""
+    response = client.post("/flood/model", json={
+        "rainfall_mm": 0.0,
+        "contributing_area_m2": 10000.0,
+        "runoff_coefficient": 0.5,
+        "timestep_hours": 1.0,
+        "threshold_area_m2": 0.0
+    })
 
-        # Mock the synthetic DEM creation to use our test DEM
-        # We'll test the actual endpoint which uses synthetic DEM internally
-        response = client.post("/flood/model", json={
-            "rainfall_mm": 0.0,
-            "contributing_area_m2": 10000.0,
-            "runoff_coefficient": 0.5,
-            "timestep_hours": 1.0,
-            "threshold_area_m2": 0.0
-        })
-
-        # Should return 422 validation error because rainfall_mm must be > 0
-        assert response.status_code == 422
-
-    finally:
-        if os.path.exists(dem_path):
-            os.unlink(dem_path)
+    assert response.status_code == 200
+    data = response.json()
+    assert data["type"] == "FeatureCollection"
+    assert len(data["features"]) == 0
+    assert data["summary"]["max_depth_m"] == 0.0
+    assert data["summary"]["total_flooded_area_m2"] == 0.0
+    assert data["summary"]["total_flood_volume_m3"] == 0.0
 
 
 def test_flood_model_valid_request():

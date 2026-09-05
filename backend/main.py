@@ -26,6 +26,10 @@ from fastapi.middleware.cors import CORSMiddleware
 from backend.database import init_db
 from backend.routers import sensors, alerts, devices, dashboard, flood
 try:
+    from backend.app.api import rainfall
+except ImportError:
+    from app.api import rainfall
+try:
     from backend.websocket_manager import manager
 except ImportError:
     from websocket_manager import manager
@@ -58,6 +62,7 @@ app.include_router(alerts.router)
 app.include_router(devices.router)
 app.include_router(dashboard.router)
 app.include_router(flood.router)
+app.include_router(rainfall.router)
 
 
 @app.get("/")

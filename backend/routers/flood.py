@@ -22,16 +22,16 @@ router = APIRouter(prefix="/flood", tags=["flood"])
 
 class FloodModelRequest(BaseModel):
     """Request parameters for flood modeling."""
-    rainfall_mm: float = Field(..., gt=0, description="Rainfall depth [mm]")
+    rainfall_mm: float = Field(..., ge=0, description="Rainfall depth [mm]")
     contributing_area_m2: float = Field(..., gt=0, description="Contributing area [m²]")
     runoff_coefficient: float = Field(..., ge=0, le=1, description="Runoff coefficient [0,1]")
     timestep_hours: float = Field(1.0, gt=0, description="Timestep [hours]")
     threshold_area_m2: float = Field(0.0, ge=0, description="Stream initiation threshold [m²]")
 
     @validator('rainfall_mm')
-    def rainfall_must_be_positive(cls, v):
-        if v <= 0:
-            raise ValueError('Rainfall must be positive')
+    def rainfall_must_be_non_negative(cls, v):
+        if v < 0:
+            raise ValueError('Rainfall must be non-negative')
         return v
 
     @validator('contributing_area_m2')

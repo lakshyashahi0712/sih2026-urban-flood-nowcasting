@@ -173,14 +173,16 @@ class OpenMeteoAdapter:
                 utc_dt = local_dt.replace(tzinfo=kolkata_tz).astimezone(timezone.utc)
                 interval_end = utc_dt + timedelta(hours=1)
 
-                # Calculate forecast lead time
-                lead_minutes = int((utc_dt - acquired_at).total_seconds() / 60)
+                # Skip intervals that have already ended
+                if interval_end <= acquired_at:
+                    continue
 
-                # Reject negative lead time (forecast from the past)
-                if lead_minutes < 0:
-                    raise RainfallAdapterInvalidTimestamp(
-                        time_str, f"Negative forecast lead time: {lead_minutes} minutes"
-                    )
+                # Calculate forecast lead time
+                if utc_dt <= acquired_at < interval_end:
+                    # Currently active hourly interval
+                    lead_minutes = 0
+                else:
+                    lead_minutes = int((utc_dt - acquired_at).total_seconds() / 60)
 
                 record = RainfallRecord(
                     timestamp=utc_dt,
@@ -197,7 +199,14 @@ class OpenMeteoAdapter:
             except (ValueError, TypeError) as e:
                 raise RainfallAdapterInvalidTimestamp(time_str, str(e)) from e
 
+        if len(records) == 0:
+            raise RainfallAdapterEmptyForecast()
+
         return RainfallSeries(records=records, source="open-meteo", acquired_at=acquired_at)
+
+    async def close(self) -> None:
+        """Close resources if any."""
+        pass
 
     def _make_stale_series(self, series: RainfallSeries) -> RainfallSeries:
         """Return a new series with the same data but status set to STALE."""

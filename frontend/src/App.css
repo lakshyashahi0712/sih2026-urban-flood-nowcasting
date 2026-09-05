@@ -1,184 +1,786 @@
-.counter {
-  font-size: 16px;
-  padding: 5px 10px;
-  border-radius: 5px;
-  color: var(--accent);
-  background: var(--accent-bg);
-  border: 2px solid transparent;
-  transition: border-color 0.3s;
-  margin-bottom: 24px;
+/* Emergency Operations Center & Geospatial UI Theme */
 
-  &:hover {
-    border-color: var(--accent-border);
-  }
-  &:focus-visible {
-    outline: 2px solid var(--accent);
-    outline-offset: 2px;
-  }
+:root {
+  --topbar-bg: #0b1329;       /* Deep Navy / Slate 950 */
+  --topbar-border: #1e293b;   /* Slate 800 */
+  --topbar-text: #f8fafc;     /* Slate 50 */
+  --topbar-text-muted: #94a3b8; /* Slate 400 */
+
+  --panel-bg: #ffffff;
+  --panel-border: #cbd5e1;    /* Slate 300 */
+  --panel-shadow: 0 4px 10px rgba(0, 0, 0, 0.12), 0 2px 4px rgba(0, 0, 0, 0.08);
+  --text-main: #0f172a;
+  --text-muted: #64748b;
+  --text-sub: #475569;
+
+  --accent-primary: #0284c7;  /* Sky 600 */
+  --accent-dark: #0369a1;
+
+  --color-depth-low: #ffeda0;
+  --color-depth-mod: #feb24c;
+  --color-depth-high: #f03b20;
+  --color-depth-severe: #bd0026;
 }
 
-.hero {
-  position: relative;
-
-  .base,
-  .framework,
-  .vite {
-    inset-inline: 0;
-    margin: 0 auto;
-  }
-
-  .base {
-    width: 170px;
-    position: relative;
-    z-index: 0;
-  }
-
-  .framework,
-  .vite {
-    position: absolute;
-  }
-
-  .framework {
-    z-index: 1;
-    top: 34px;
-    height: 28px;
-    transform: perspective(2000px) rotateZ(300deg) rotateX(44deg) rotateY(39deg)
-      scale(1.4);
-  }
-
-  .vite {
-    z-index: 0;
-    top: 107px;
-    height: 26px;
-    width: auto;
-    transform: perspective(2000px) rotateZ(300deg) rotateX(40deg) rotateY(39deg)
-      scale(0.8);
-  }
-}
-
-#center {
+.app-root {
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
   display: flex;
   flex-direction: column;
-  gap: 25px;
-  place-content: center;
-  place-items: center;
-  flex-grow: 1;
-
-  @media (max-width: 1024px) {
-    padding: 32px 20px 24px;
-    gap: 18px;
-  }
 }
 
-#next-steps {
-  display: flex;
-  border-top: 1px solid var(--border);
-  text-align: left;
-
-  & > div {
-    flex: 1 1 0;
-    padding: 32px;
-    @media (max-width: 1024px) {
-      padding: 24px 20px;
-    }
-  }
-
-  .icon {
-    margin-bottom: 16px;
-    width: 22px;
-    height: 22px;
-  }
-
-  @media (max-width: 1024px) {
-    flex-direction: column;
-    text-align: center;
-  }
-}
-
-#docs {
-  border-right: 1px solid var(--border);
-
-  @media (max-width: 1024px) {
-    border-right: none;
-    border-bottom: 1px solid var(--border);
-  }
-}
-
-#next-steps ul {
-  list-style: none;
-  padding: 0;
-  display: flex;
-  gap: 8px;
-  margin: 32px 0 0;
-
-  .logo {
-    height: 18px;
-  }
-
-  a {
-    color: var(--text-h);
-    font-size: 16px;
-    border-radius: 6px;
-    background: var(--social-bg);
-    display: flex;
-    padding: 6px 12px;
-    align-items: center;
-    gap: 8px;
-    text-decoration: none;
-    transition: box-shadow 0.3s;
-
-    &:hover {
-      box-shadow: var(--shadow);
-    }
-    .button-icon {
-      height: 18px;
-      width: 18px;
-    }
-  }
-
-  @media (max-width: 1024px) {
-    margin-top: 20px;
-    flex-wrap: wrap;
-    justify-content: center;
-
-    li {
-      flex: 1 1 calc(50% - 8px);
-    }
-
-    a {
-      width: 100%;
-      justify-content: center;
-      box-sizing: border-box;
-    }
-  }
-}
-
-#spacer {
-  height: 88px;
-  border-top: 1px solid var(--border);
-  @media (max-width: 1024px) {
-    height: 48px;
-  }
-}
-
-.ticks {
-  position: relative;
+.flood-app {
   width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
 
-  &::before,
-  &::after {
-    content: '';
-    position: absolute;
-    top: -4.5px;
-    border: 5px solid transparent;
+/* 1. TOP BAR: IMMEDIATE 3-SECOND SYSTEM IDENTITY */
+.app-topbar {
+  height: 48px;
+  background-color: var(--topbar-bg);
+  border-bottom: 1px solid var(--topbar-border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 16px;
+  color: var(--topbar-text);
+  z-index: 20;
+  user-select: none;
+}
+
+.topbar-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.system-identity {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.system-mark {
+  font-size: 16px;
+  color: #38bdf8;
+}
+
+.system-title {
+  font-size: 14px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  color: #ffffff;
+}
+
+.topbar-sep {
+  color: #334155;
+  font-size: 13px;
+}
+
+.system-location {
+  display: flex;
+  align-items: center;
+}
+
+.loc-label {
+  font-size: 13px;
+  font-weight: 700;
+  color: #38bdf8;
+  letter-spacing: 0.05em;
+}
+
+.system-subtitle {
+  font-size: 11.5px;
+  font-weight: 600;
+  color: #94a3b8;
+  letter-spacing: 0.05em;
+}
+
+.prototype-status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background-color: #1e293b;
+  border: 1px solid #334155;
+  padding: 2px 7px;
+  border-radius: 3px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  color: #94a3b8;
+  margin-left: 4px;
+}
+
+.status-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background-color: #38bdf8;
+}
+
+.topbar-right {
+  display: flex;
+  align-items: center;
+}
+
+.telemetry-info {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11.5px;
+  color: var(--topbar-text-muted);
+  font-family: var(--font-mono, monospace);
+}
+
+.meta-tag {
+  background: #1e293b;
+  border: 1px solid #334155;
+  color: #cbd5e1;
+  padding: 1px 5px;
+  border-radius: 3px;
+  font-size: 10px;
+  font-weight: 600;
+}
+
+.meta-label {
+  font-weight: 600;
+  color: #64748b;
+  font-size: 10.5px;
+}
+
+.meta-val {
+  color: #e2e8f0;
+}
+
+.meta-divider {
+  color: #334155;
+}
+
+/* 2. MAP WORKSPACE */
+.map-workspace {
+  position: relative;
+  flex: 1;
+  width: 100%;
+  height: calc(100vh - 48px);
+  background-color: #e2e8f0;
+}
+
+.map-viewport {
+  width: 100%;
+  height: 100%;
+}
+
+/* 3. FORECAST TIMELINE CONTROLS (Top Left Overlay) */
+.flood-timeline-panel {
+  position: absolute;
+  top: 14px;
+  left: 14px;
+  z-index: 10;
+  background: var(--panel-bg);
+  border: 1px solid var(--panel-border);
+  border-radius: 6px;
+  box-shadow: var(--panel-shadow);
+  padding: 8px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 270px;
+}
+
+.timeline-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid #f1f5f9;
+  padding-bottom: 4px;
+}
+
+.timeline-heading {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  color: #0f172a;
+  text-transform: uppercase;
+}
+
+.timeline-active-tag {
+  font-size: 11px;
+  font-weight: 700;
+  color: #0284c7;
+  font-family: var(--font-mono, monospace);
+}
+
+.timeline-stepper {
+  display: flex;
+  gap: 5px;
+}
+
+.timeline-step-btn {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 6px 4px;
+  background: #f8fafc;
+  border: 1px solid #cbd5e1;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.timeline-step-btn:hover {
+  background: #f1f5f9;
+  border-color: #94a3b8;
+}
+
+.timeline-step-btn.selected {
+  background: #0f172a;
+  border-color: #0f172a;
+}
+
+.timeline-step-btn .step-time {
+  font-size: 12px;
+  font-weight: 700;
+  color: #334155;
+}
+
+.timeline-step-btn.selected .step-time {
+  color: #ffffff;
+}
+
+.timeline-step-btn .step-rain-tag {
+  font-size: 9.5px;
+  font-weight: 600;
+  color: #64748b;
+  font-family: var(--font-mono, monospace);
+}
+
+.timeline-step-btn.selected .step-rain-tag {
+  color: #38bdf8;
+}
+
+/* 4. MAP EXTENT CONTROLS */
+.map-extent-tools {
+  position: absolute;
+  top: 86px;
+  left: 14px;
+  z-index: 10;
+  display: flex;
+  gap: 6px;
+}
+
+.extent-btn {
+  padding: 4px 10px;
+  font-size: 11px;
+  font-weight: 600;
+  background: var(--panel-bg);
+  border: 1px solid var(--panel-border);
+  border-radius: 4px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+  cursor: pointer;
+  color: var(--text-sub);
+}
+
+.extent-btn:hover {
+  background: #f8fafc;
+  border-color: #94a3b8;
+  color: var(--text-main);
+}
+
+.extent-btn.highlight {
+  color: #0369a1;
+  border-color: #7dd3fc;
+  background: #f0f9ff;
+}
+
+.extent-btn.highlight:hover {
+  background: #e0f2fe;
+}
+
+/* 5. FLOOD STATUS & RISK ASSESSMENT PANEL (Strong Visual Hierarchy) */
+.flood-status-panel {
+  position: absolute;
+  top: 124px;
+  left: 14px;
+  z-index: 10;
+  width: 270px;
+  background: var(--panel-bg);
+  border: 1px solid var(--panel-border);
+  border-radius: 6px;
+  box-shadow: var(--panel-shadow);
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.status-panel-top {
+  display: flex;
+  flex-direction: column;
+  border-bottom: 1px solid #f1f5f9;
+  padding-bottom: 6px;
+}
+
+.status-horizon-kicker {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+  text-transform: uppercase;
+}
+
+.status-horizon-title {
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--text-main);
+}
+
+/* HERO RISK & PEAK DEPTH CARD */
+.status-hero-card {
+  border: 1.5px solid;
+  border-radius: 5px;
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.hero-risk-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.hero-risk-kicker {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+}
+
+.hero-risk-badge {
+  font-size: 10px;
+  font-weight: 800;
+  padding: 2px 7px;
+  border-radius: 3px;
+  letter-spacing: 0.04em;
+}
+
+.hero-risk-badge.risk-severe {
+  background: #991b1b;
+  color: #ffffff;
+}
+
+.hero-risk-badge.risk-high {
+  background: #c2410c;
+  color: #ffffff;
+}
+
+.hero-risk-badge.risk-mod {
+  background: #ca8a04;
+  color: #ffffff;
+}
+
+.hero-risk-badge.risk-low {
+  background: #475569;
+  color: #ffffff;
+}
+
+.hero-depth-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.depth-digit-group {
+  display: flex;
+  align-items: baseline;
+  gap: 2px;
+}
+
+.depth-large {
+  font-size: 32px;
+  font-weight: 800;
+  line-height: 1;
+  font-family: var(--font-mono, monospace);
+  letter-spacing: -0.02em;
+}
+
+.depth-metric-unit {
+  font-size: 18px;
+  font-weight: 700;
+  color: #475569;
+}
+
+.depth-context-label {
+  text-align: right;
+}
+
+.context-primary {
+  font-size: 11px;
+  font-weight: 700;
+  color: #334155;
+}
+
+.context-secondary {
+  font-size: 10px;
+  font-weight: 600;
+  color: #64748b;
+  font-family: var(--font-mono, monospace);
+}
+
+.hero-impact-note {
+  font-size: 10.5px;
+  font-weight: 600;
+  line-height: 1.3;
+  padding-top: 4px;
+  border-top: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+/* SECONDARY METRICS GRID */
+.status-metric-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.grid-metric-box {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 4px;
+  padding: 6px 8px;
+  display: flex;
+  flex-direction: column;
+}
+
+.metric-box-label {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  color: #64748b;
+  text-transform: uppercase;
+}
+
+.metric-box-val {
+  font-size: 15px;
+  font-weight: 700;
+  color: #0f172a;
+  font-family: var(--font-mono, monospace);
+  margin-top: 1px;
+}
+
+.sub-unit {
+  font-size: 11px;
+  font-weight: 500;
+  color: #64748b;
+}
+
+.metric-box-sub {
+  font-size: 9px;
+  color: #94a3b8;
+  margin-top: 2px;
+}
+
+/* SIMULATION FOOTER */
+.status-panel-footer {
+  border-top: 1px solid #f1f5f9;
+  padding-top: 8px;
+}
+
+.footer-engine-title {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: #64748b;
+  text-transform: uppercase;
+}
+
+.footer-engine-desc {
+  font-size: 10.5px;
+  font-weight: 600;
+  color: #334155;
+  margin-top: 2px;
+}
+
+.footer-engine-param {
+  font-size: 9.5px;
+  color: #64748b;
+  margin-top: 2px;
+}
+
+/* 6. DATA STATUS & PROVENANCE (Bottom Left) */
+.provenance-card {
+  position: absolute;
+  bottom: 16px;
+  left: 14px;
+  z-index: 10;
+  width: 270px;
+  background: var(--panel-bg);
+  border: 1px solid var(--panel-border);
+  border-radius: 6px;
+  box-shadow: var(--panel-shadow);
+  padding: 10px 12px;
+}
+
+.provenance-header {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  margin-bottom: 8px;
+  border-bottom: 1px solid #f1f5f9;
+  padding-bottom: 4px;
+}
+
+.provenance-list {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.provenance-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 11px;
+}
+
+.prov-source {
+  color: var(--text-sub);
+}
+
+.prov-tag {
+  font-size: 10px;
+  font-weight: 600;
+  padding: 1px 6px;
+  border-radius: 3px;
+}
+
+.prov-tag.tag-prototype {
+  background: #f1f5f9;
+  color: #475569;
+}
+
+.prov-tag.tag-modelled {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.provenance-disclaimer {
+  margin-top: 8px;
+  padding-top: 6px;
+  border-top: 1px solid #f1f5f9;
+  font-size: 9.5px;
+  color: #64748b;
+  line-height: 1.35;
+}
+
+/* 7. FLOOD DEPTH LEGEND (Bottom Right) */
+.flood-legend-card {
+  position: absolute;
+  bottom: 24px;
+  right: 14px;
+  z-index: 10;
+  background: var(--panel-bg);
+  border: 1px solid var(--panel-border);
+  border-radius: 6px;
+  box-shadow: var(--panel-shadow);
+  padding: 10px 14px;
+  min-width: 170px;
+}
+
+.legend-heading {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-main);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 8px;
+  border-bottom: 1px solid #f1f5f9;
+  padding-bottom: 4px;
+}
+
+.legend-scale {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.legend-grade {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+}
+
+.grade-color {
+  width: 18px;
+  height: 14px;
+  border-radius: 2px;
+  border: 1px solid #cbd5e1;
+  flex-shrink: 0;
+}
+
+.grade-range {
+  font-weight: 600;
+  color: var(--text-main);
+  font-family: var(--font-mono, monospace);
+  font-size: 11.5px;
+}
+
+.grade-desc {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-left: auto;
+}
+
+/* 8. BANNERS (Loading & Error) */
+.map-banner-status, .map-banner-error {
+  position: absolute;
+  top: 14px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 15;
+  padding: 6px 16px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  box-shadow: var(--panel-shadow);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.map-banner-status {
+  background: #0f172a;
+  color: #f8fafc;
+  border: 1px solid #334155;
+}
+
+.map-banner-error {
+  background: #fef2f2;
+  color: #991b1b;
+  border: 1px solid #f87171;
+}
+
+.banner-spinner {
+  width: 12px;
+  height: 12px;
+  border: 2px solid #38bdf8;
+  border-top-color: transparent;
+  border-radius: 50%;
+  display: inline-block;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* 9. MAPLIBRE POPUP STYLING */
+.ops-popup .maplibregl-popup-content {
+  padding: 10px 12px;
+  border-radius: 6px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  border: 1px solid #cbd5e1;
+  background: #ffffff;
+  min-width: 220px;
+}
+
+.popup-box {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.popup-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid #e2e8f0;
+  padding-bottom: 4px;
+}
+
+.popup-title {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  color: #334155;
+}
+
+.popup-badge {
+  font-size: 9.5px;
+  font-weight: 700;
+  padding: 1px 5px;
+  border-radius: 3px;
+}
+
+.popup-body {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.popup-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+}
+
+.popup-row .lbl {
+  color: #64748b;
+}
+
+.popup-row .val {
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.popup-row .val.bold {
+  color: #c2410c;
+  font-family: var(--font-mono, monospace);
+}
+
+.popup-row .status-modelled {
+  color: #92400e;
+  font-size: 10px;
+}
+
+/* 10. RESPONSIVE DESIGN */
+@media (max-width: 768px) {
+  .app-topbar {
+    height: auto;
+    padding: 8px 12px;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
+  }
+  
+  .map-workspace {
+    height: calc(100vh - 72px);
   }
 
-  &::before {
-    left: 0;
-    border-left-color: var(--border);
+  .flood-status-panel {
+    top: auto;
+    bottom: 80px;
+    left: 10px;
+    width: 240px;
   }
-  &::after {
-    right: 0;
-    border-right-color: var(--border);
+
+  .provenance-card {
+    display: none;
+  }
+
+  .flood-legend-card {
+    right: 10px;
+    bottom: 10px;
+    min-width: 140px;
+    padding: 8px 10px;
   }
 }
+
