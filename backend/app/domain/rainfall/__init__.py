@@ -8,6 +8,14 @@ try:
         RainfallStatus,
         SourceType,
     )
+    from backend.app.domain.rainfall.radar_models import (
+        RainfallProvenance,
+        RadarProductType,
+        RadarFormatType,
+        RadarMetadata,
+        SpatialRainfallGrid,
+        MUMBAI_PILOT_BOUNDS_32643,
+    )
     from backend.app.domain.rainfall.exceptions import (
         RainfallAdapterError,
         RainfallAdapterTimeout,
@@ -27,6 +35,14 @@ except ImportError:
         RainfallStatus,
         SourceType,
     )
+    from app.domain.rainfall.radar_models import (
+        RainfallProvenance,
+        RadarProductType,
+        RadarFormatType,
+        RadarMetadata,
+        SpatialRainfallGrid,
+        MUMBAI_PILOT_BOUNDS_32643,
+    )
     from app.domain.rainfall.exceptions import (
         RainfallAdapterError,
         RainfallAdapterTimeout,
@@ -45,6 +61,12 @@ __all__ = [
     "RainfallSeries",
     "RainfallStatus",
     "SourceType",
+    "RainfallProvenance",
+    "RadarProductType",
+    "RadarFormatType",
+    "RadarMetadata",
+    "SpatialRainfallGrid",
+    "MUMBAI_PILOT_BOUNDS_32643",
     "RainfallAdapterError",
     "RainfallAdapterTimeout",
     "RainfallAdapterHTTPError",

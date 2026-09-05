@@ -29,6 +29,8 @@ def get_db():
 
 def init_db():
     """Create all tables. Run once at startup."""
-    # Import models so they register with Base.metadata
-    from backend import models  # noqa: F401
+    try:
+        from backend import models  # noqa: F401
+    except ImportError:
+        import models  # noqa: F401
     Base.metadata.create_all(bind=engine)

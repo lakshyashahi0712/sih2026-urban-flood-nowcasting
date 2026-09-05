@@ -29,9 +29,18 @@ Desktop.ini
 *.swo
 
 # Data files (acquired during Phase 0 — not committed with source)
-data/
+/data/
 store/
 
 # DuckDB
 *.duckdb
 *.duckdb.wal
+
+# SQLite & local databases
+*.db
+*.sqlite
+*.sqlite3
+backend/water_monitor.db
+
+# Logs
+*.log

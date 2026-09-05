@@ -363,6 +363,46 @@ class RasterEngine:
             raise RuntimeError("Metadata not available. Call load_and_preprocess first.")
         return self._dem_meta.copy()
 
+    def get_transform(self):
+        """Get affine transform of processed raster."""
+        if self._dem_meta and 'transform' in self._dem_meta:
+            return self._dem_meta['transform']
+        return None
+
+    def get_cell_size(self) -> float:
+        """Get cell size in meters."""
+        if self._cell_size is not None:
+            return float(self._cell_size)
+        return 10.0
+
+    @property
+    def transform(self):
+        """Affine transform of processed raster."""
+        return self.get_transform()
+
+    @property
+    def height(self) -> int:
+        """Height of processed raster."""
+        if self._dem_meta and 'height' in self._dem_meta:
+            return int(self._dem_meta['height'])
+        if self._dem_array is not None:
+            return int(self._dem_array.shape[0])
+        return 0
+
+    @property
+    def width(self) -> int:
+        """Width of processed raster."""
+        if self._dem_meta and 'width' in self._dem_meta:
+            return int(self._dem_meta['width'])
+        if self._dem_array is not None:
+            return int(self._dem_array.shape[1])
+        return 0
+
+    @property
+    def filled_dem(self) -> Optional[np.ndarray]:
+        """Filled DEM array."""
+        return self._filled_dem
+
     def cleanup(self) -> None:
         """Clean up temporary files."""
         # No temporary files used in this implementation

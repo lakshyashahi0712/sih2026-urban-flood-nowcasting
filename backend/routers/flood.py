@@ -18,10 +18,15 @@ try:
     from backend.app.config import settings
     from backend.app.domain.pipeline.flood_pipeline import run_flood_modeling_pipeline
     from backend.app.api.rainfall import get_adapter
+    from backend.app.domain.roads.models import StreetFloodIntelligence
+    from backend.app.domain.roads.spatial_matcher import match_flood_to_streets
 except ImportError:
     from app.config import settings
     from app.domain.pipeline.flood_pipeline import run_flood_modeling_pipeline
     from app.api.rainfall import get_adapter
+    from app.domain.roads.models import StreetFloodIntelligence
+    from app.domain.roads.spatial_matcher import match_flood_to_streets
+
 
 
 router = APIRouter(prefix="/flood", tags=["flood"])
@@ -102,6 +107,30 @@ def _create_synthetic_dem_mumbai_bbox(
     return dem, meta
 
 
+def _get_dem_path_and_meta() -> tuple[str, dict, bool]:
+    """
+    Get the DEM raster path and metadata for flood modeling.
+    Uses real Copernicus DEM GLO-30 (30m) for the Mumbai pilot zone if available,
+    falling back to synthetic DEM if the file is absent.
+
+    Returns:
+        (dem_path, meta, is_temp)
+    """
+    dem_file = getattr(settings, "dem_path", None)
+    if dem_file and os.path.exists(dem_file):
+        with rio_open(dem_file) as src:
+            meta = src.meta.copy()
+        return dem_file, meta, False
+
+    # Fallback to synthetic DEM
+    dem_array, meta = _create_synthetic_dem_mumbai_bbox()
+    with tempfile.NamedTemporaryFile(suffix='.tif', delete=False) as tmp:
+        tmp_path = tmp.name
+    with rio_open(tmp_path, 'w', **meta) as dst:
+        dst.write(dem_array, 1)
+    return tmp_path, meta, True
+
+
 def _flood_result_to_geojson(
     flood_result: Any,
     cell_size: float = 10.0,
@@ -180,6 +209,9 @@ def _flood_result_to_geojson(
             "max_depth_m": float(flood_result.max_depth_m),
             "total_flooded_area_m2": float(flood_result.total_flooded_area_m2),
             "total_flood_volume_m3": float(flood_result.total_flood_volume_m3),
+            "total_runoff_volume_m3": float(getattr(flood_result, "total_runoff_volume_m3", 0.0)),
+            "conveyed_drainage_volume_m3": float(getattr(flood_result, "conveyed_drainage_volume_m3", 0.0)),
+            "surface_flood_volume_m3": float(getattr(flood_result, "surface_flood_volume_m3", flood_result.total_flood_volume_m3)),
             "provenance": flood_result.provenance
         }
     }
@@ -191,46 +223,35 @@ async def run_flood_model(request: FloodModelRequest):
     """
     Run flood modeling pipeline and return results as GeoJSON.
 
-    Uses synthetic DEM for Mumbai region (placeholder for MVP).
+    Uses real Copernicus GLO-30 DSM (30m) for the Mumbai pilot zone.
     """
+    dem_path, meta, is_temp = _get_dem_path_and_meta()
     try:
-        # Create synthetic DEM in temporary file
-        dem_array, meta = _create_synthetic_dem_mumbai_bbox()
+        # Run the pipeline
+        result = run_flood_modeling_pipeline(
+            rainfall_mm=request.rainfall_mm,
+            contributing_area_m2=request.contributing_area_m2,
+            runoff_coefficient=request.runoff_coefficient,
+            dem_raster_path=dem_path,
+            timestep_hours=request.timestep_hours,
+            threshold_area_m2=request.threshold_area_m2
+        )
 
-        with tempfile.NamedTemporaryFile(suffix='.tif', delete=False) as tmp:
-            dem_path = tmp.name
+        # Convert to GeoJSON
+        geojson_result = _flood_result_to_geojson(
+            flood_result=result,
+            cell_size=meta['transform'][0],  # pixel width
+            origin_x=meta['transform'][2],   # top-left x
+            origin_y=meta['transform'][5]    # top-left y
+        )
 
-        try:
-            with rio_open(dem_path, 'w', **meta) as dst:
-                dst.write(dem_array, 1)
-
-            # Run the pipeline
-            result = run_flood_modeling_pipeline(
-                rainfall_mm=request.rainfall_mm,
-                contributing_area_m2=request.contributing_area_m2,
-                runoff_coefficient=request.runoff_coefficient,
-                dem_raster_path=dem_path,
-                timestep_hours=request.timestep_hours,
-                threshold_area_m2=request.threshold_area_m2
-            )
-
-            # Convert to GeoJSON
-            geojson_result = _flood_result_to_geojson(
-                flood_result=result,
-                cell_size=meta['transform'][0],  # pixel width
-                origin_x=meta['transform'][2],   # top-left x
-                origin_y=meta['transform'][5]    # top-left y
-            )
-
-            return geojson_result
-
-        finally:
-            # Clean up temporary file
-            if os.path.exists(dem_path):
-                os.unlink(dem_path)
+        return geojson_result
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Flood modeling failed: {str(e)}")
+    finally:
+        if is_temp and os.path.exists(dem_path):
+            os.unlink(dem_path)
 
 
 class HorizonState(BaseModel):
@@ -246,12 +267,15 @@ class HorizonState(BaseModel):
     total_flooded_area_m2: float = Field(..., ge=0, description="Total flooded area [m²]")
     flood_volume_m3: float = Field(..., ge=0, description="Total flood volume [m³]")
     total_flood_volume_m3: float = Field(..., ge=0, description="Total flood volume [m³]")
+    total_runoff_volume_m3: float = Field(0.0, ge=0, description="Total catchment runoff volume [m³]")
+    conveyed_drainage_volume_m3: float = Field(0.0, ge=0, description="Runoff safely conveyed by drainage [m³]")
+    surface_flood_volume_m3: float = Field(0.0, ge=0, description="Surcharge volume routed over surface [m³]")
     features: List[Dict[str, Any]] = Field(..., description="GeoJSON flood polygon features")
     geojson: Dict[str, Any] = Field(..., description="GeoJSON FeatureCollection for this horizon")
 
 
 class FloodForecastResponse(BaseModel):
-    """0–3 hour flood evolution response with 4 independently modeled horizon states."""
+    """0-3 hour flood evolution response with 4 independently modeled horizon states."""
     source: str = Field(..., description="Rainfall provider identifier")
     source_type: str = Field("forecast", description="Classification of data source")
     acquired_at: Optional[str] = Field(None, description="When forecast was fetched (UTC)")
@@ -261,10 +285,10 @@ class FloodForecastResponse(BaseModel):
 
 
 class FloodForecastRequest(BaseModel):
-    """Request parameters for generating 0–3 hour flood evolution."""
-    contributing_area_m2: float = Field(5000.0, gt=0, description="Contributing area [m²]")
+    """Request parameters for generating 0-3 hour flood evolution."""
+    contributing_area_m2: float = Field(500000.0, gt=0, description="Contributing area [m²]")
     runoff_coefficient: float = Field(0.7, ge=0, le=1, description="Runoff coefficient [0,1]")
-    threshold_area_m2: float = Field(10.0, ge=0, description="Stream initiation threshold [m²]")
+    threshold_area_m2: float = Field(15000.0, ge=0, description="Stream initiation threshold [m²]")
     rainfall_mm_list: Optional[List[float]] = Field(None, description="Optional override list of 4 hourly rainfall values [mm]")
     use_cache: bool = Field(True, description="Allow cached rainfall forecast")
 
@@ -280,9 +304,9 @@ class FloodForecastRequest(BaseModel):
 
 
 async def compute_flood_forecast_evolution(
-    contributing_area_m2: float = 5000.0,
+    contributing_area_m2: float = 500000.0,
     runoff_coefficient: float = 0.7,
-    threshold_area_m2: float = 10.0,
+    threshold_area_m2: float = 15000.0,
     rainfall_mm_list: Optional[List[float]] = None,
     use_cache: bool = True,
 ) -> FloodForecastResponse:
@@ -337,15 +361,10 @@ async def compute_flood_forecast_evolution(
                 "lead_time": lead_times[i]
             })
 
-    # Create synthetic DEM once for the four runs
-    dem_array, meta = _create_synthetic_dem_mumbai_bbox()
-    with tempfile.NamedTemporaryFile(suffix='.tif', delete=False) as tmp:
-        dem_path = tmp.name
+    # Load DEM raster path and metadata (real Copernicus DEM GLO-30 or fallback)
+    dem_path, meta, is_temp = _get_dem_path_and_meta()
 
     try:
-        with rio_open(dem_path, 'w', **meta) as dst:
-            dst.write(dem_array, 1)
-
         horizon_states: List[HorizonState] = []
         for i in range(4):
             meta_item = records_meta[i]
@@ -385,11 +404,15 @@ async def compute_flood_forecast_evolution(
                 total_flooded_area_m2=area_m2,
                 flood_volume_m3=vol_m3,
                 total_flood_volume_m3=vol_m3,
+                total_runoff_volume_m3=float(result.total_runoff_volume_m3),
+                conveyed_drainage_volume_m3=float(result.conveyed_drainage_volume_m3),
+                surface_flood_volume_m3=float(result.surface_flood_volume_m3),
                 features=features,
                 geojson=geojson_result,
             )
             horizon_states.append(state)
 
+        elevation_label = "Copernicus GLO-30 DSM (30m)" if not is_temp else "Synthetic DEM (sloping plane prototype)"
         return FloodForecastResponse(
             source=source,
             source_type="forecast",
@@ -397,7 +420,8 @@ async def compute_flood_forecast_evolution(
             status=status_str,
             provenance={
                 "rainfall": "Weather forecast (Open-Meteo hourly NWP)",
-                "runoff": "rainfall–runoff",
+                "elevation": elevation_label,
+                "runoff": "rainfall\u2013runoff",
                 "drainage": "drainage capacity",
                 "surface_routing": "surface routing",
                 "model_status": "MODELLED / DERIVED"
@@ -405,7 +429,7 @@ async def compute_flood_forecast_evolution(
             horizons=horizon_states
         )
     finally:
-        if os.path.exists(dem_path):
+        if is_temp and os.path.exists(dem_path):
             os.unlink(dem_path)
 
 
@@ -414,7 +438,7 @@ async def get_flood_forecast(
     use_cache: bool = Query(True, description="Allow cached rainfall forecast")
 ):
     """
-    Get 0–3 hour flood evolution with four independently modeled horizon states.
+    Get 0-3 hour flood evolution with four independently modeled horizon states.
     Uses live/cached Open-Meteo hourly forecast.
     """
     return await compute_flood_forecast_evolution(use_cache=use_cache)
@@ -423,7 +447,7 @@ async def get_flood_forecast(
 @router.post("/forecast", response_model=FloodForecastResponse)
 async def post_flood_forecast(request: FloodForecastRequest):
     """
-    Generate 0–3 hour flood evolution with four independently modeled horizon states,
+    Generate 0-3 hour flood evolution with four independently modeled horizon states,
     with customizable catchment parameters and optional rainfall override for testing.
     """
     return await compute_flood_forecast_evolution(
@@ -432,4 +456,153 @@ async def post_flood_forecast(request: FloodForecastRequest):
         threshold_area_m2=request.threshold_area_m2,
         rainfall_mm_list=request.rainfall_mm_list,
         use_cache=request.use_cache
+    )
+
+
+class StreetForecastResponse(BaseModel):
+    """Street & Intersection Flood Intelligence across all forecast horizons."""
+    source: str = Field("open-meteo", description="Rainfall provider identifier")
+    status: str = Field("LIVE", description="Rainfall data freshness status")
+    horizons: List[StreetFloodIntelligence] = Field(..., description="Chronological street intelligence horizons")
+
+
+class StreetModelRequest(BaseModel):
+    """Request parameters for street flood intelligence."""
+    rainfall_mm: float = Field(..., ge=0, description="Rainfall depth [mm]")
+    horizon: str = Field("+1h", description="Forecast horizon label")
+    contributing_area_m2: float = Field(500000.0, gt=0, description="Contributing area [m²]")
+    runoff_coefficient: float = Field(0.7, ge=0, le=1, description="Runoff coefficient [0,1]")
+    threshold_area_m2: float = Field(15000.0, ge=0, description="Stream initiation threshold [m²]")
+
+
+def _compute_street_intelligence_for_depth(
+    rainfall_mm: float,
+    horizon: str,
+    lead_time: str,
+    contributing_area_m2: float = 500000.0,
+    runoff_coefficient: float = 0.7,
+    threshold_area_m2: float = 15000.0,
+) -> StreetFloodIntelligence:
+    """Run flood model pipeline and spatially associate with OSM streets/intersections."""
+    dem_path, meta, is_temp = _get_dem_path_and_meta()
+    try:
+        pipeline_res = run_flood_modeling_pipeline(
+            rainfall_mm=rainfall_mm,
+            contributing_area_m2=contributing_area_m2,
+            runoff_coefficient=runoff_coefficient,
+            dem_raster_path=dem_path,
+            timestep_hours=1.0,
+            threshold_area_m2=threshold_area_m2,
+        )
+
+        return match_flood_to_streets(
+            flood_depth_m=pipeline_res.flood_depth_m,
+            flooded_mask=pipeline_res.flooded_mask,
+            cell_w=meta['transform'][0],
+            cell_h=abs(meta['transform'][4]),
+            origin_x=meta['transform'][2],
+            origin_y=meta['transform'][5],
+            horizon=horizon,
+            lead_time=lead_time,
+            rainfall_mm=rainfall_mm,
+        )
+    finally:
+        if is_temp and os.path.exists(dem_path):
+            os.unlink(dem_path)
+
+
+@router.get("/streets", response_model=StreetFloodIntelligence)
+async def get_street_flood_intelligence(
+    horizon: str = Query("+1h", description="Forecast horizon: NOW, +1h, +2h, +3h"),
+    rainfall_mm: Optional[float] = Query(None, ge=0, description="Optional override/scenario rainfall depth [mm]"),
+    use_cache: bool = Query(True, description="Allow cached rainfall forecast"),
+):
+    """
+    Get Street & Intersection Flood Intelligence for a forecast horizon or scenario.
+    Spatially associates 2D modelled flood depths with real OpenStreetMap road corridors.
+    """
+    horizon_map = {"NOW": 0, "+1h": 1, "+2h": 2, "+3h": 3}
+    lead_times = {"NOW": "0h", "+1h": "+1h", "+2h": "+2h", "+3h": "+3h"}
+    h_label = horizon if horizon in horizon_map else "+1h"
+    lead_time = lead_times.get(h_label, "+1h")
+
+    if rainfall_mm is not None:
+        return _compute_street_intelligence_for_depth(
+            rainfall_mm=rainfall_mm,
+            horizon=h_label,
+            lead_time=lead_time,
+        )
+
+    # Fetch live/cached rainfall
+    adapter = get_adapter()
+    try:
+        series = await adapter.fetch(use_cache=use_cache)
+    except Exception as e:
+        raise HTTPException(status_code=503, detail=f"Rainfall forecast unavailable: {str(e)}")
+
+    if len(series.records) < 4:
+        raise HTTPException(status_code=503, detail="Fewer than 4 hourly records available")
+
+    idx = horizon_map.get(h_label, 1)
+    rec = series.records[idx]
+    rain_val = float(rec.rainfall_mm)
+
+    return _compute_street_intelligence_for_depth(
+        rainfall_mm=rain_val,
+        horizon=h_label,
+        lead_time=lead_time,
+    )
+
+
+@router.get("/streets/forecast", response_model=StreetForecastResponse)
+async def get_streets_forecast(
+    use_cache: bool = Query(True, description="Allow cached rainfall forecast"),
+):
+    """
+    Get Street & Intersection Flood Intelligence across all 4 chronological horizons (NOW, +1h, +2h, +3h).
+    """
+    adapter = get_adapter()
+    try:
+        series = await adapter.fetch(use_cache=use_cache)
+    except Exception as e:
+        raise HTTPException(status_code=503, detail=f"Rainfall forecast unavailable: {str(e)}")
+
+    if len(series.records) < 4:
+        raise HTTPException(status_code=503, detail="Fewer than 4 hourly records available")
+
+    labels = ["NOW", "+1h", "+2h", "+3h"]
+    lead_times = ["0h", "+1h", "+2h", "+3h"]
+    horizon_intelligences: List[StreetFloodIntelligence] = []
+
+    for i in range(4):
+        rec = series.records[i]
+        rain_val = float(rec.rainfall_mm)
+        intel = _compute_street_intelligence_for_depth(
+            rainfall_mm=rain_val,
+            horizon=labels[i],
+            lead_time=lead_times[i],
+        )
+        horizon_intelligences.append(intel)
+
+    return StreetForecastResponse(
+        source=series.source or "open-meteo",
+        status=series.records[0].status.value if series.records else "LIVE",
+        horizons=horizon_intelligences,
+    )
+
+
+@router.post("/streets", response_model=StreetFloodIntelligence)
+async def post_street_flood_intelligence(request: StreetModelRequest):
+    """
+    Calculate Street & Intersection Flood Intelligence for custom catchment and rainfall conditions.
+    """
+    lead_times = {"NOW": "0h", "+1h": "+1h", "+2h": "+2h", "+3h": "+3h"}
+    lead_time = lead_times.get(request.horizon, "+1h")
+    return _compute_street_intelligence_for_depth(
+        rainfall_mm=request.rainfall_mm,
+        horizon=request.horizon,
+        lead_time=lead_time,
+        contributing_area_m2=request.contributing_area_m2,
+        runoff_coefficient=request.runoff_coefficient,
+        threshold_area_m2=request.threshold_area_m2,
     )

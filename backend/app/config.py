@@ -20,6 +20,9 @@ class Settings(BaseSettings):
     mumbai_lat: float = 19.0760
     mumbai_lon: float = 72.8777
 
+    # DEM / Elevation dataset
+    dem_path: str = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data", "dem", "mumbai_pilot_dem_30m.tif")
+
     # Database (for future use)
     database_url: str = "sqlite:///./flood_nowcast.db"
 

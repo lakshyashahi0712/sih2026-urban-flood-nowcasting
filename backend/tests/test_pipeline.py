@@ -86,7 +86,7 @@ def test_pipeline_no_rainfall_no_flood():
 
 
 def test_pipeline_rainfall_produces_runoff():
-    """Test that rainfall produces runoff that eventually appears as flood volume."""
+    """Test that rainfall produces runoff and surcharges surface when capacity is exceeded."""
     dem_array, meta = create_test_dem(shape=(3, 3), cell_size=10.0, nodata=None, tilt="se")
     with tempfile.NamedTemporaryFile(suffix='.tif', delete=False) as tmp:
         dem_path = tmp.name
@@ -94,9 +94,9 @@ def test_pipeline_rainfall_produces_runoff():
         with rio_open(dem_path, 'w', **meta) as dst:
             dst.write(dem_array, 1)
 
-        # Use parameters that will definitely produce some runoff
+        # High rainfall that exceeds channel capacity to test surcharge surface flooding
         result = run_flood_modeling_pipeline(
-            rainfall_mm=50.0,  # 50mm rainfall
+            rainfall_mm=150.0,  # 150mm rainfall exceeds 3x3 channel capacity (~973 m³)
             contributing_area_m2=10000.0,  # 1 hectare
             runoff_coefficient=0.8,  # High runoff coefficient
             dem_raster_path=dem_path,
@@ -104,18 +104,23 @@ def test_pipeline_rainfall_produces_runoff():
             threshold_area_m2=0.0  # Low threshold to ensure network is built
         )
 
-        # Should have some flood volume (conservation of mass)
-        expected_runoff = 0.8 * 50.0 * 10000.0 / 1000.0  # V = C * i * A / 1000
+        # Expected total runoff: 0.8 * 150 * 10000 / 1000 = 1200 m³
+        expected_runoff = 0.8 * 150.0 * 10000.0 / 1000.0
+        assert result.total_runoff_volume_m3 == pytest.approx(expected_runoff)
+        # Should have both conveyed volume and surface flood volume
+        assert result.conveyed_drainage_volume_m3 > 0.0
         assert result.total_flood_volume_m3 > 0.0
-        # Volume should be conserved (within numerical precision)
-        assert abs(result.total_flood_volume_m3 - expected_runoff) < expected_runoff * 0.1  # Allow 10% tolerance
+        assert result.surface_flood_volume_m3 > 0.0
+        # Total mass balance: conveyed + surface flood == total runoff
+        total_accounted = result.conveyed_drainage_volume_m3 + result.surface_flood_volume_m3
+        assert abs(total_accounted - expected_runoff) < 1e-4
 
     finally:
         os.unlink(dem_path)
 
 
 def test_pipeline_mass_conservation():
-    """Test that mass is approximately conserved through the pipeline."""
+    """Test that mass is strictly conserved through the pipeline (conveyed + surface == total runoff)."""
     dem_array, meta = create_test_dem(shape=(5, 5), cell_size=10.0, nodata=-9999.0, tilt="se")
     with tempfile.NamedTemporaryFile(suffix='.tif', delete=False) as tmp:
         dem_path = tmp.name
@@ -133,23 +138,25 @@ def test_pipeline_mass_conservation():
             runoff_coefficient=coeff,
             dem_raster_path=dem_path,
             timestep_hours=1.0,
-            threshold_area_m2=50.0  # Reasonable threshold
+            threshold_area_m2=50.0
         )
 
-        # Calculate expected runoff volume
         expected_runoff = coeff * rainfall_mm * area_m2 / 1000.0
-
-        # Allow for some numerical error due to simplifications in the pipeline
-        # but volume should be reasonably conserved
-        assert result.total_flood_volume_m3 > 0.0
-        assert abs(result.total_flood_volume_m3 - expected_runoff) < expected_runoff * 0.3  # 30% tolerance
+        assert result.total_runoff_volume_m3 == pytest.approx(expected_runoff)
+        # In non-surcharged conditions, drainage network conveys runoff safely without surface flooding
+        assert result.conveyed_drainage_volume_m3 == pytest.approx(expected_runoff)
+        assert result.surface_flood_volume_m3 == 0.0
+        assert result.total_flood_volume_m3 == 0.0
+        # Mass conservation: conveyed + surface_flood == total_runoff
+        total_accounted = result.conveyed_drainage_volume_m3 + result.surface_flood_volume_m3
+        assert abs(total_accounted - expected_runoff) < 1e-4
 
     finally:
         os.unlink(dem_path)
 
 
 def test_pipeline_high_runoff_coefficient():
-    """Test that higher runoff coefficient produces more flood volume."""
+    """Test that higher runoff coefficient produces more runoff and flood volume."""
     dem_array, meta = create_test_dem(shape=(4, 4), cell_size=10.0, nodata=-9999.0, tilt="se")
     with tempfile.NamedTemporaryFile(suffix='.tif', delete=False) as tmp:
         dem_path = tmp.name
@@ -159,8 +166,8 @@ def test_pipeline_high_runoff_coefficient():
 
         # Low runoff coefficient
         result_low = run_flood_modeling_pipeline(
-            rainfall_mm=20.0,
-            contributing_area_m2=10000.0,
+            rainfall_mm=100.0,
+            contributing_area_m2=20000.0,
             runoff_coefficient=0.3,
             dem_raster_path=dem_path,
             timestep_hours=1.0,
@@ -169,15 +176,17 @@ def test_pipeline_high_runoff_coefficient():
 
         # High runoff coefficient
         result_high = run_flood_modeling_pipeline(
-            rainfall_mm=20.0,
-            contributing_area_m2=10000.0,
+            rainfall_mm=100.0,
+            contributing_area_m2=20000.0,
             runoff_coefficient=0.9,
             dem_raster_path=dem_path,
             timestep_hours=1.0,
             threshold_area_m2=10.0
         )
 
-        # High coefficient should produce more flood volume
+        # High coefficient should produce more total runoff
+        assert result_high.total_runoff_volume_m3 > result_low.total_runoff_volume_m3
+        # High coefficient should produce more surface flood volume
         assert result_high.total_flood_volume_m3 > result_low.total_flood_volume_m3
 
     finally:

@@ -173,12 +173,49 @@
   height: 100%;
 }
 
-/* 3. FORECAST TIMELINE CONTROLS (Top Left Overlay) */
-.flood-timeline-panel {
+/* 3. LEFT WORKSPACE OVERLAY STACK (Strict Non-Overlapping Layout) */
+.map-left-overlay {
   position: absolute;
   top: 14px;
   left: 14px;
+  bottom: 14px;
+  width: 280px;
   z-index: 10;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  pointer-events: none;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding-right: 4px;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(148, 163, 184, 0.4) transparent;
+}
+
+.map-left-overlay::-webkit-scrollbar {
+  width: 4px;
+}
+
+.map-left-overlay::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.4);
+  border-radius: 4px;
+}
+
+.map-left-overlay > * {
+  pointer-events: auto;
+  position: static !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
+  flex-shrink: 0;
+  margin: 0;
+}
+
+.map-left-overlay .provenance-card {
+  margin-top: auto;
+}
+
+/* FORECAST TIMELINE CONTROLS */
+.flood-timeline-panel {
   background: var(--panel-bg);
   border: 1px solid var(--panel-border);
   border-radius: 6px;
@@ -187,7 +224,6 @@
   display: flex;
   flex-direction: column;
   gap: 6px;
-  min-width: 270px;
 }
 
 .timeline-header {
@@ -263,19 +299,79 @@
   color: #38bdf8;
 }
 
+/* COMPACT MODE SWITCHER (LIVE FORECAST | MODEL SCENARIO) */
+.mode-toggle-group {
+  display: flex;
+  background: #f1f5f9;
+  padding: 2px;
+  border-radius: 5px;
+  border: 1px solid #cbd5e1;
+  gap: 2px;
+  margin-bottom: 5px;
+}
+
+.mode-toggle-btn {
+  flex: 1;
+  padding: 4px 6px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  color: #64748b;
+  background: transparent;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  text-align: center;
+}
+
+.mode-toggle-btn:hover {
+  color: #0f172a;
+}
+
+.mode-toggle-btn.active {
+  background: #0f172a;
+  color: #ffffff;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+}
+
+.mode-toggle-btn.scenario-active {
+  background: #0284c7;
+  color: #ffffff;
+}
+
+.timeline-step-btn.scenario-selected {
+  background: #0369a1;
+  border-color: #0369a1;
+}
+
+.timeline-step-btn.scenario-selected .step-rain-tag {
+  color: #e0f2fe;
+}
+
+.scenario-explanatory-note {
+  font-size: 9.5px;
+  color: #0369a1;
+  font-weight: 600;
+  background: #f0f9ff;
+  border: 1px solid #bae6fd;
+  padding: 3px 6px;
+  border-radius: 3px;
+  margin-top: 4px;
+  line-height: 1.25;
+}
+
 /* 4. MAP EXTENT CONTROLS */
 .map-extent-tools {
-  position: absolute;
-  top: 86px;
-  left: 14px;
-  z-index: 10;
   display: flex;
   gap: 6px;
+  width: 100%;
 }
 
 .extent-btn {
-  padding: 4px 10px;
-  font-size: 11px;
+  flex: 1;
+  padding: 5px 6px;
+  font-size: 10.5px;
   font-weight: 600;
   background: var(--panel-bg);
   border: 1px solid var(--panel-border);
@@ -283,6 +379,8 @@
   box-shadow: 0 1px 3px rgba(0,0,0,0.08);
   cursor: pointer;
   color: var(--text-sub);
+  text-align: center;
+  white-space: nowrap;
 }
 
 .extent-btn:hover {
@@ -303,11 +401,6 @@
 
 /* 5. FLOOD STATUS & RISK ASSESSMENT PANEL (Strong Visual Hierarchy) */
 .flood-status-panel {
-  position: absolute;
-  top: 124px;
-  left: 14px;
-  z-index: 10;
-  width: 270px;
   background: var(--panel-bg);
   border: 1px solid var(--panel-border);
   border-radius: 6px;
@@ -512,13 +605,251 @@
   margin-top: 2px;
 }
 
-/* 6. DATA STATUS & PROVENANCE (Bottom Left) */
+/* 6. STREET & INTERSECTION FLOOD INTELLIGENCE PANEL */
+.street-intelligence-panel {
+  background: var(--panel-bg);
+  border: 1px solid var(--panel-border);
+  border-radius: 6px;
+  box-shadow: var(--panel-shadow);
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.street-panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid #f1f5f9;
+  padding-bottom: 4px;
+}
+
+.street-header-title {
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  color: var(--text-main);
+  text-transform: uppercase;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.street-toggle-label {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text-sub);
+  cursor: pointer;
+}
+
+.street-impact-summary {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.impact-count-badge {
+  flex: 1;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 4px;
+  padding: 4px 6px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.impact-count-badge .count-num {
+  font-size: 14px;
+  font-weight: 800;
+  color: #0f172a;
+  font-family: var(--font-mono, monospace);
+  line-height: 1.1;
+}
+
+.impact-count-badge .count-lbl {
+  font-size: 8.5px;
+  font-weight: 700;
+  color: #64748b;
+  text-transform: uppercase;
+}
+
+.impact-depth-badge {
+  flex: 1.4;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 4px;
+  padding: 4px 6px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.impact-depth-badge .depth-lbl {
+  font-size: 8.5px;
+  font-weight: 700;
+  color: #991b1b;
+  text-transform: uppercase;
+}
+
+.impact-depth-badge .depth-val {
+  font-size: 13px;
+  font-weight: 800;
+  color: #b91c1c;
+  font-family: var(--font-mono, monospace);
+  line-height: 1.1;
+}
+
+.street-risk-pills {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.risk-pill {
+  font-size: 9px;
+  font-weight: 700;
+  padding: 2px 5px;
+  border-radius: 3px;
+  letter-spacing: 0.02em;
+}
+
+.risk-pill.critical {
+  background: #fef2f2;
+  color: #991b1b;
+  border: 1px solid #fecaca;
+}
+
+.risk-pill.high {
+  background: #fff7ed;
+  color: #c2410c;
+  border: 1px solid #fed7aa;
+}
+
+.risk-pill.medium {
+  background: #fefce8;
+  color: #854d0e;
+  border: 1px solid #fef08a;
+}
+
+.risk-pill.low {
+  background: #f0f9ff;
+  color: #0369a1;
+  border: 1px solid #bae6fd;
+}
+
+.street-affected-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.list-title {
+  font-size: 8.5px;
+  font-weight: 800;
+  color: #64748b;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.affected-street-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 4px 6px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.affected-street-item:hover {
+  background: #f1f5f9;
+  border-color: #cbd5e1;
+}
+
+.street-item-left {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  max-width: 170px;
+}
+
+.street-item-name {
+  font-size: 10.5px;
+  font-weight: 700;
+  color: #1e293b;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.street-item-sub {
+  font-size: 8.5px;
+  color: #64748b;
+}
+
+.street-item-right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 1px;
+}
+
+.street-risk-tag {
+  font-size: 8.5px;
+  font-weight: 800;
+  padding: 1px 4px;
+  border-radius: 2px;
+}
+
+.street-depth-tag {
+  font-size: 9.5px;
+  font-weight: 700;
+  color: #0f172a;
+  font-family: var(--font-mono, monospace);
+}
+
+.street-safe-state {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  border-radius: 4px;
+}
+
+.street-safe-state .safe-icon {
+  font-size: 16px;
+}
+
+.street-safe-state .safe-title {
+  font-size: 10.5px;
+  font-weight: 700;
+  color: #166534;
+}
+
+.street-safe-state .safe-sub {
+  font-size: 9px;
+  color: #15803d;
+}
+
+.street-panel-provenance {
+  font-size: 8.5px;
+  color: #94a3b8;
+  border-top: 1px solid #f1f5f9;
+  padding-top: 4px;
+  line-height: 1.25;
+}
+
+/* 7. DATA STATUS & PROVENANCE */
 .provenance-card {
-  position: absolute;
-  bottom: 16px;
-  left: 14px;
-  z-index: 10;
-  width: 270px;
   background: var(--panel-bg);
   border: 1px solid var(--panel-border);
   border-radius: 6px;
@@ -765,14 +1096,14 @@
     height: calc(100vh - 72px);
   }
 
-  .flood-status-panel {
-    top: auto;
-    bottom: 80px;
-    left: 10px;
-    width: 240px;
+  .map-left-overlay {
+    width: 250px;
+    top: 8px;
+    left: 8px;
+    bottom: 8px;
   }
 
-  .provenance-card {
+  .map-left-overlay .provenance-card {
     display: none;
   }
 

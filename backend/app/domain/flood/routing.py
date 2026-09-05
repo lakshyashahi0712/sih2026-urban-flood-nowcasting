@@ -9,7 +9,10 @@ import numpy as np
 from typing import Dict, Tuple, Optional
 from dataclasses import dataclass
 
-from backend.app.domain.drainage.models import Provenance
+try:
+    from backend.app.domain.drainage.models import Provenance
+except ImportError:
+    from app.domain.drainage.models import Provenance
 
 
 @dataclass
@@ -21,6 +24,10 @@ class FloodResult:
     total_flooded_area_m2: float  # Total area of flooded cells (m²)
     total_flood_volume_m3: float  # Total volume of flood water (m³)
     provenance: str            # Source of the flood depth calculation
+    total_runoff_volume_m3: float = 0.0       # Total runoff generated from catchment [m³]
+    conveyed_drainage_volume_m3: float = 0.0  # Runoff safely conveyed by drainage network [m³]
+    surface_flood_volume_m3: float = 0.0      # Surcharged runoff volume routed over surface [m³]
+    drainage_provenance: Optional[str] = None # Provenance of drainage network used (e.g. BMC, DEM_DERIVED)
 
 
 def route_flood_depth(
@@ -28,7 +35,10 @@ def route_flood_depth(
     flow_direction: np.ndarray,
     cell_size_m: float,
     nodata_mask: Optional[np.ndarray] = None,
-    threshold_m: float = 0.001
+    threshold_m: float = 0.001,
+    total_runoff_volume_m3: Optional[float] = None,
+    conveyed_drainage_volume_m3: Optional[float] = None,
+    drainage_provenance: Optional[str] = None
 ) -> FloodResult:
     """Route excess runoff over the DEM surface using D8 flow directions.
 
@@ -171,13 +181,21 @@ def route_flood_depth(
     total_flooded_area_m2 = np.sum(flooded_mask) * cell_area_m2
     total_flood_volume_m3 = np.sum(flood_depth) * cell_area_m2
 
+    surface_vol = float(total_flood_volume_m3)
+    conveyed_vol = float(conveyed_drainage_volume_m3) if conveyed_drainage_volume_m3 is not None else 0.0
+    total_runoff_vol = float(total_runoff_volume_m3) if total_runoff_volume_m3 is not None else (surface_vol + conveyed_vol)
+
     return FloodResult(
         flood_depth_m=flood_depth,
         flooded_mask=flooded_mask,
         max_depth_m=float(max_depth_m),
         total_flooded_area_m2=float(total_flooded_area_m2),
-        total_flood_volume_m3=float(total_flood_volume_m3),
-        provenance="MODELLED/DERIVED"
+        total_flood_volume_m3=surface_vol,
+        provenance="MODELLED/DERIVED",
+        total_runoff_volume_m3=total_runoff_vol,
+        conveyed_drainage_volume_m3=conveyed_vol,
+        surface_flood_volume_m3=surface_vol,
+        drainage_provenance=drainage_provenance
     )
 
 

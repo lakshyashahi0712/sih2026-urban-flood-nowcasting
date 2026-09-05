@@ -2,7 +2,10 @@
 from datetime import datetime, timezone
 from sqlalchemy import Column, Integer, Float, String, DateTime, Boolean, ForeignKey
 from sqlalchemy.orm import relationship
-from backend.database import Base
+try:
+    from backend.database import Base
+except ImportError:
+    from database import Base
 
 
 def utcnow():

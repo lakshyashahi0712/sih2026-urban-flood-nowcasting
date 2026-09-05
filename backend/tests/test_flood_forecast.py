@@ -13,9 +13,9 @@ def test_flood_forecast_post_deterministic_evolution():
     """Verify POST /flood/forecast returns 4 distinct horizon states with exact hourly rainfall."""
     rainfall_inputs = [0.0, 15.0, 30.0, 50.0]
     payload = {
-        "contributing_area_m2": 5000.0,
+        "contributing_area_m2": 500000.0,
         "runoff_coefficient": 0.7,
-        "threshold_area_m2": 10.0,
+        "threshold_area_m2": 15000.0,
         "rainfall_mm_list": rainfall_inputs,
         "use_cache": True
     }
@@ -38,6 +38,8 @@ def test_flood_forecast_post_deterministic_evolution():
         assert h["timestep_hours"] == 1.0
         assert "geojson" in h
         assert h["geojson"]["type"] == "FeatureCollection"
+        # Mass balance: conveyed + surface == total runoff
+        assert h["conveyed_drainage_volume_m3"] + h["surface_flood_volume_m3"] == pytest.approx(h["total_runoff_volume_m3"], abs=1e-3)
 
     # Horizon 0 has 0.0 mm rainfall -> 0 inundation and empty features
     now_state = data["horizons"][0]
@@ -47,11 +49,20 @@ def test_flood_forecast_post_deterministic_evolution():
     assert len(now_state["features"]) == 0
     assert len(now_state["geojson"]["features"]) == 0
 
-    # Horizon 1 (15mm) -> positive inundation
+    # Horizon 1 (15mm) -> safely conveyed inside drainage network
     h1_state = data["horizons"][1]
-    assert h1_state["max_depth_m"] > 0.0
-    assert h1_state["flooded_area_m2"] > 0.0
-    assert len(h1_state["features"]) > 0
+    assert h1_state["rainfall_mm"] == 15.0
+    assert h1_state["conveyed_drainage_volume_m3"] == pytest.approx(5250.0)
+    assert h1_state["surface_flood_volume_m3"] == 0.0
+    assert h1_state["max_depth_m"] == 0.0
+    assert len(h1_state["features"]) == 0
+
+    # Horizon 3 (50mm) -> exceeds drainage capacity -> positive inundation
+    h3_state = data["horizons"][3]
+    assert h3_state["rainfall_mm"] == 50.0
+    assert h3_state["max_depth_m"] > 0.0
+    assert h3_state["flooded_area_m2"] > 0.0
+    assert len(h3_state["features"]) > 0
 
     # Provenance assertions
     prov = data["provenance"]
@@ -63,12 +74,12 @@ def test_flood_forecast_post_deterministic_evolution():
 
 
 def test_flood_forecast_does_not_sum_rainfall_across_horizons():
-    """Verify that horizon +2h evaluates ONLY that hour's rainfall, not cumulative rainfall."""
-    rainfall_inputs = [10.0, 20.0, 30.0, 40.0]
+    """Verify that horizon +1h evaluates ONLY that hour's rainfall, not cumulative rainfall."""
+    rainfall_inputs = [10.0, 50.0, 30.0, 40.0]
     payload = {
-        "contributing_area_m2": 5000.0,
+        "contributing_area_m2": 500000.0,
         "runoff_coefficient": 0.7,
-        "threshold_area_m2": 10.0,
+        "threshold_area_m2": 15000.0,
         "rainfall_mm_list": rainfall_inputs,
     }
 
@@ -76,19 +87,19 @@ def test_flood_forecast_does_not_sum_rainfall_across_horizons():
     assert forecast_res.status_code == 200
     forecast_data = forecast_res.json()
 
-    # Compare Horizon +1h (20.0 mm) against a standalone /flood/model run of 20.0 mm with timestep=1.0
+    # Compare Horizon +1h (50.0 mm) against a standalone /flood/model run of 50.0 mm with timestep=1.0
     direct_res = client.post("/flood/model", json={
-        "rainfall_mm": 20.0,
-        "contributing_area_m2": 5000.0,
+        "rainfall_mm": 50.0,
+        "contributing_area_m2": 500000.0,
         "runoff_coefficient": 0.7,
         "timestep_hours": 1.0,
-        "threshold_area_m2": 10.0
+        "threshold_area_m2": 15000.0
     })
     assert direct_res.status_code == 200
     direct_data = direct_res.json()
 
     h1_state = forecast_data["horizons"][1]
-    assert h1_state["rainfall_mm"] == 20.0
+    assert h1_state["rainfall_mm"] == 50.0
     assert h1_state["max_depth_m"] == pytest.approx(direct_data["summary"]["max_depth_m"], rel=1e-4)
     assert h1_state["flooded_area_m2"] == pytest.approx(direct_data["summary"]["total_flooded_area_m2"], rel=1e-4)
     assert h1_state["flood_volume_m3"] == pytest.approx(direct_data["summary"]["total_flood_volume_m3"], rel=1e-4)

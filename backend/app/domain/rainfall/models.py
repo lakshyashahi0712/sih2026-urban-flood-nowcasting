@@ -18,6 +18,16 @@ class SourceType(str, Enum):
     NOWCAST = "nowcast"
 
 
+class RainfallProvenance(str, Enum):
+    """Authoritative provenance tracking for precipitation inputs.
+
+    Never label NWP forecast as radar observation.
+    """
+    RADAR = "RADAR"
+    NWP_FALLBACK = "NWP_FALLBACK"
+    UNAVAILABLE = "UNAVAILABLE"
+
+
 class RainfallStatus(str, Enum):
     """Status of the rainfall data at retrieval time."""
     LIVE = "LIVE"
@@ -40,6 +50,10 @@ class RainfallRecord(BaseModel):
     acquired_at: datetime = Field(..., description="When this record was fetched from the provider (UTC)")
     forecast_lead_minutes: int = Field(..., ge=0, description="Lead time from acquired_at to timestamp")
     status: RainfallStatus = Field(default=RainfallStatus.LIVE, description="Data freshness status")
+    provenance: RainfallProvenance = Field(
+        default=RainfallProvenance.NWP_FALLBACK,
+        description="Authoritative source provenance (RADAR, NWP_FALLBACK, UNAVAILABLE)"
+    )
 
     @field_validator("timestamp", "interval_end", "acquired_at", mode="before")
     @classmethod
@@ -79,6 +93,10 @@ class RainfallSeries(BaseModel):
     records: list[RainfallRecord] = Field(default_factory=list)
     source: str = Field(default="")
     acquired_at: Optional[datetime] = None
+    provenance: RainfallProvenance = Field(
+        default=RainfallProvenance.NWP_FALLBACK,
+        description="Authoritative source provenance"
+    )
 
     def __len__(self) -> int:
         return len(self.records)

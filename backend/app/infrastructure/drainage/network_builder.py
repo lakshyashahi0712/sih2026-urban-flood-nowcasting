@@ -198,5 +198,6 @@ class NetworkBuilder:
         return DrainageNetwork(
             nodes=self._nodes,
             channels=self._channels,
-            crs=self.crs
+            crs=self.crs,
+            provenance=Provenance.DEM_DERIVED
         )
