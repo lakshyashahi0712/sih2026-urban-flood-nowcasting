@@ -7,6 +7,17 @@ FastAPI backend that:
 
 Run with:  uvicorn main:app --reload --host 0.0.0.0 --port 8000
 """
+import os
+import sys
+from pathlib import Path
+
+# Ensure both repository root and backend directory are on sys.path
+_backend_dir = Path(__file__).resolve().parent
+_repo_root = _backend_dir.parent
+for _p in [str(_backend_dir), str(_repo_root)]:
+    if _p not in sys.path:
+        sys.path.insert(0, _p)
+
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect

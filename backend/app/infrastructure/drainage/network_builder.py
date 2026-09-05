@@ -10,8 +10,8 @@ try:
     from backend.app.domain.drainage.models import DrainageChannel, DrainageNode, DrainageNetwork, NodeType, Provenance
     from backend.app.infrastructure.drainage.raster_engine import RasterEngine
 except ImportError:
-    from app.domain.drainage.models import DrainageChannel, DrainageNode, DrainageNetwork, NodeType, Provenance
-    from app.infrastructure.drainage.raster_engine import RasterEngine
+    from backend.app.domain.drainage.models import DrainageChannel, DrainageNode, DrainageNetwork, NodeType, Provenance
+    from backend.app.infrastructure.drainage.raster_engine import RasterEngine
 
 
 class NetworkBuilder:

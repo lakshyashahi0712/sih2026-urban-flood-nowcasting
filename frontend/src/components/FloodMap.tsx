@@ -53,6 +53,34 @@ const FloodMap = () => {
         }
 
         const data = await response.json();
+        console.log('Flood data received:', data);
+
+        // Verify 1: Confirm POST /flood/model returns the georeferenced polygon
+        if (data.features && data.features.length > 0) {
+          const feature = data.features[0];
+          console.log('First flood feature:', feature);
+
+          // Verify 2: Confirm the returned polygon is around [72.878, 19.075]
+          if (feature.geometry && feature.geometry.coordinates) {
+            const coords = feature.geometry.coordinates[0]; // Exterior ring of polygon
+            if (coords.length > 0) {
+              const firstCoord = coords[0];
+              console.log('First coordinate pair:', firstCoord);
+
+              // Check if coordinates are in Mumbai range (~72-73 longitude, 18-20 latitude)
+              const [lon, lat] = firstCoord;
+              const isInMumbaiRange = lon >= 72 && lon <= 73 && lat >= 18 && lat <= 20;
+              console.log('Coordinate in Mumbai range (72-73, 18-20):', isInMumbaiRange, {lon, lat});
+
+              // Calculate min/max bounds
+              const lons = coords.map(c => c[0]);
+              const lats = coords.map(c => c[1]);
+              console.log('Longitude range:', Math.min(...lons), '-', Math.max(...lons));
+              console.log('Latitude range:', Math.min(...lats), '-', Math.max(...lats));
+            }
+          }
+        }
+
         setFloodData(data);
       } catch (err) {
         console.error('Error fetching flood data:', err);
@@ -72,14 +100,19 @@ const FloodMap = () => {
 
   useEffect(() => {
     if (map && floodData) {
+      console.log('Updating flood map with data:', floodData);
+
       if (map.getSource('flood-depth')) {
+        console.log('Updating existing flood-depth source');
         (map.getSource('flood-depth') as GeoJSONSource).setData(floodData);
       } else {
+        console.log('Adding new flood-depth source');
         map.addSource('flood-depth', {
           type: 'geojson',
           data: floodData
         });
 
+        console.log('Adding flood-depth-layer');
         map.addLayer({
           id: 'flood-depth-layer',
           type: 'fill',
@@ -98,6 +131,7 @@ const FloodMap = () => {
           }
         });
 
+        console.log('Adding flood-depth-outline');
         map.addLayer({
           id: 'flood-depth-outline',
           type: 'line',
@@ -108,6 +142,43 @@ const FloodMap = () => {
             'line-opacity': 0.7
           }
         });
+
+        // Verify 3: Confirm the MapLibre source "flood-depth" exists after floodData loads
+        const source = map.getSource('flood-depth');
+        console.log('Source "flood-depth" exists:', !!source);
+
+        // Verify 4: Confirm layers "flood-depth-layer" and "flood-depth-outline" exist
+        const layer1 = map.getLayer('flood-depth-layer');
+        const layer2 = map.getLayer('flood-depth-outline');
+        console.log('Layer "flood-depth-layer" exists:', !!layer1);
+        console.log('Layer "flood-depth-outline" exists:', !!layer2);
+
+        // Verify 5: Log the flood layer's rendered feature count using queryRenderedFeatures if appropriate
+        // Note: queryRenderedFeatures requires map to be rendered and visible
+        // We'll use a small timeout to allow rendering
+        setTimeout(() => {
+          try {
+            const features = map.queryRenderedFeatures({ layers: ['flood-depth-layer'] });
+            console.log('Rendered feature count for flood-depth-layer:', features.length);
+
+            // Verify 6: Temporarily zoom the map to approximately zoom 15 around the first flood feature
+            if (features.length > 0 && floodData.features && floodData.features.length > 0) {
+              const firstFeature = floodData.features[0];
+              if (firstFeature.geometry && firstFeature.geometry.coordinates) {
+                const coords = firstFeature.geometry.coordinates[0]; // Exterior ring
+                if (coords.length > 0) {
+                  const firstCoord = coords[0];
+                  const [lon, lat] = firstCoord;
+                  console.log('Zooming to first flood feature at:', [lon, lat]);
+                  map.setCenter([lon, lat]);
+                  map.setZoom(15);
+                }
+              }
+            }
+          } catch (e) {
+            console.error('Error querying rendered features or zooming:', e);
+          }
+        }, 1000);
       }
     }
   }, [map, floodData]);
