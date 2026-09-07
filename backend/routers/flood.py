@@ -20,12 +20,16 @@ try:
     from backend.app.api.rainfall import get_adapter
     from backend.app.domain.roads.models import StreetFloodIntelligence
     from backend.app.domain.roads.spatial_matcher import match_flood_to_streets
+    from backend.app.domain.historical.events.mumbai_2017 import get_mumbai_august_2017_event
+    from backend.app.domain.historical.replay import HistoricalReplayEngine, HistoricalReplaySummary
 except ImportError:
     from app.config import settings
     from app.domain.pipeline.flood_pipeline import run_flood_modeling_pipeline
     from app.api.rainfall import get_adapter
     from app.domain.roads.models import StreetFloodIntelligence
     from app.domain.roads.spatial_matcher import match_flood_to_streets
+    from app.domain.historical.events.mumbai_2017 import get_mumbai_august_2017_event
+    from app.domain.historical.replay import HistoricalReplayEngine, HistoricalReplaySummary
 
 
 
@@ -606,3 +610,212 @@ async def post_street_flood_intelligence(request: StreetModelRequest):
         runoff_coefficient=request.runoff_coefficient,
         threshold_area_m2=request.threshold_area_m2,
     )
+
+
+class HistoricalTimestepResponse(BaseModel):
+    """Hourly simulation timestep in the historical replay."""
+    timestep_index: int = Field(..., description="Hourly index 0..23")
+    replay_timestamp: str = Field(..., description="Timestamp in ISO format (Asia/Kolkata)")
+    time_display: str = Field(..., description="Formatted time, e.g. 13:30 IST")
+    rainfall_mm: float = Field(..., description="Hourly rainfall depth [mm]")
+    rainfall_intensity_mm_per_hr: float = Field(..., description="Rainfall intensity [mm/hr]")
+    cumulative_rainfall_mm: float = Field(..., description="Cumulative rainfall from start of event [mm]")
+    boundary_level_m: float = Field(..., description="Downstream tidal level [m above CD]")
+    peak_flood_depth_m: float = Field(..., description="Peak modeled flood depth in domain [m]")
+    flooded_area_m2: float = Field(..., description="Inundated area in domain [m²]")
+    flood_volume_m3: float = Field(..., description="Surface flood volume [m³]")
+    drainage_surcharge_volume_m3: float = Field(..., description="Drainage surcharge volume [m³]")
+    features: List[Dict[str, Any]] = Field(default_factory=list, description="GeoJSON features")
+    geojson: Dict[str, Any] = Field(..., description="GeoJSON FeatureCollection for mapping")
+    roads_geojson: Optional[Dict[str, Any]] = Field(default=None, description="GeoJSON FeatureCollection of affected road segments")
+    intersections_geojson: Optional[Dict[str, Any]] = Field(default=None, description="GeoJSON FeatureCollection of affected intersections")
+    street_risk: Optional[StreetFloodIntelligence] = Field(default=None, description="Street and intersection flood risk assessment")
+
+
+class EventPeakStatistic(BaseModel):
+    """Peak metric with its specific timestep occurrence."""
+    value: float
+    unit: str
+    timestep_index: int
+    time_display: str
+    description: str
+
+
+class EventSummary(BaseModel):
+    """Event-level peak simulation summary distinguishing distinct peak timesteps."""
+    peak_depth: EventPeakStatistic
+    peak_surcharge: EventPeakStatistic
+    peak_surface_volume: EventPeakStatistic
+    peak_flooded_area: EventPeakStatistic
+
+
+class HistoricalReplayResponse(BaseModel):
+    """Complete retrospective event replay container for 29 August 2017 Mumbai Deluge."""
+    event_id: str
+    event_name: str
+    event_date: str
+    mode_label: str = "RETROSPECTIVE EVENT REPLAY"
+    event_subtitle: str = "29 AUG 2017 — MUMBAI DELUGE"
+    first_timestamp: str
+    last_timestamp: str
+    timestep_count: int
+    peak_modeled_depth_m: float
+    peak_flooded_area_m2: float
+    peak_flood_volume_m3: float
+    peak_surcharge_volume_m3: float
+    event_summary: EventSummary
+    provenance: Dict[str, str]
+    benchmarks_geojson: Dict[str, Any]
+    validation_comparisons: List[Dict[str, Any]]
+    timesteps: List[HistoricalTimestepResponse]
+
+
+_HISTORICAL_2017_CACHE: Optional[HistoricalReplayResponse] = None
+
+
+@router.get("/historical/2017", response_model=HistoricalReplayResponse)
+def get_historical_2017_replay(
+    use_cache: bool = Query(True, description="Return cached retrospective replay if available"),
+):
+    """
+    Get retrospective simulation replay of the 29 August 2017 Mumbai Deluge.
+    Includes 24 hourly timesteps with synchronous GeoJSON flood grids,
+    benchmarks overlay, and independent validation comparison.
+    """
+    global _HISTORICAL_2017_CACHE
+    if use_cache and _HISTORICAL_2017_CACHE is not None:
+        return _HISTORICAL_2017_CACHE
+
+    event = get_mumbai_august_2017_event()
+    engine = HistoricalReplayEngine()
+    summary: HistoricalReplaySummary = engine.run_replay(event, include_geojson=True)
+
+    # Convert benchmarks to GeoJSON FeatureCollection
+    benchmark_features: List[Dict[str, Any]] = []
+    for b in event.observed_flood_benchmarks:
+        benchmark_features.append({
+            "type": "Feature",
+            "geometry": {
+                "type": "Point",
+                "coordinates": [b.longitude, b.latitude],
+            },
+            "properties": {
+                "location_id": b.location_id,
+                "location_name": b.location_name,
+                "observed_depth_range": b.depth_range.descriptor,
+                "minimum": b.depth_range.min_depth_m,
+                "maximum": b.depth_range.max_depth_m,
+                "observed_min_depth_m": b.depth_range.min_depth_m,
+                "observed_max_depth_m": b.depth_range.max_depth_m,
+                "descriptor": b.depth_range.descriptor,
+                "impact_notes": b.impact_notes,
+                "source_citation": b.source_citation,
+                "provenance": "OBSERVED",
+                "is_model_input": b.is_model_input,
+            },
+        })
+
+    benchmarks_geojson = {
+        "type": "FeatureCollection",
+        "features": benchmark_features,
+    }
+
+    # Format 24 timesteps with cumulative rainfall and formatted time
+    timesteps_response: List[HistoricalTimestepResponse] = []
+    cumulative_mm = 0.0
+
+    for ts in summary.timesteps:
+        cumulative_mm += ts.rainfall_mm
+        dt_ist = ts.replay_timestamp
+        time_str = dt_ist.strftime("%H:%M IST") if hasattr(dt_ist, "strftime") else str(dt_ist)
+        geojson_data = ts.geojson or {"type": "FeatureCollection", "features": []}
+
+        timesteps_response.append(
+            HistoricalTimestepResponse(
+                timestep_index=ts.timestep_index,
+                replay_timestamp=ts.replay_timestamp.isoformat() if hasattr(ts.replay_timestamp, "isoformat") else str(ts.replay_timestamp),
+                time_display=time_str,
+                rainfall_mm=round(ts.rainfall_mm, 2),
+                rainfall_intensity_mm_per_hr=round(ts.rainfall_intensity_mm_per_hr, 2),
+                cumulative_rainfall_mm=round(cumulative_mm, 2),
+                boundary_level_m=round(ts.boundary_level_m, 2),
+                peak_flood_depth_m=round(ts.peak_flood_depth_m, 3),
+                flooded_area_m2=round(ts.flooded_area_m2, 1),
+                flood_volume_m3=round(ts.flood_volume_m3, 1),
+                drainage_surcharge_volume_m3=round(ts.drainage_surcharge_volume_m3, 1),
+                features=geojson_data.get("features", []),
+                geojson=geojson_data,
+                roads_geojson=ts.street_risk.roads_geojson if ts.street_risk else None,
+                intersections_geojson=ts.street_risk.intersections_geojson if ts.street_risk else None,
+                street_risk=ts.street_risk,
+            )
+        )
+
+    val_comparisons = [comp.model_dump() for comp in summary.validation_comparisons]
+
+    # Dynamically identify distinct timesteps where each peak occurs
+    max_d_step = max(timesteps_response, key=lambda ts: ts.peak_flood_depth_m)
+    max_s_step = max(timesteps_response, key=lambda ts: ts.drainage_surcharge_volume_m3)
+    max_v_step = max(timesteps_response, key=lambda ts: ts.flood_volume_m3)
+    max_a_step = max(timesteps_response, key=lambda ts: ts.flooded_area_m2)
+
+    event_summary = EventSummary(
+        peak_depth=EventPeakStatistic(
+            value=max_d_step.peak_flood_depth_m,
+            unit="m",
+            timestep_index=max_d_step.timestep_index,
+            time_display=max_d_step.time_display,
+            description="Peak modeled flood depth across domain",
+        ),
+        peak_surcharge=EventPeakStatistic(
+            value=max_s_step.drainage_surcharge_volume_m3,
+            unit="m³",
+            timestep_index=max_s_step.timestep_index,
+            time_display=max_s_step.time_display,
+            description="Peak network drainage surcharge volume",
+        ),
+        peak_surface_volume=EventPeakStatistic(
+            value=max_v_step.flood_volume_m3,
+            unit="m³",
+            timestep_index=max_v_step.timestep_index,
+            time_display=max_v_step.time_display,
+            description="Peak routed surface flood volume",
+        ),
+        peak_flooded_area=EventPeakStatistic(
+            value=max_a_step.flooded_area_m2,
+            unit="m²",
+            timestep_index=max_a_step.timestep_index,
+            time_display=max_a_step.time_display,
+            description="Peak inundated surface area",
+        ),
+    )
+
+    response = HistoricalReplayResponse(
+        event_id=event.metadata.event_id,
+        event_name=event.metadata.event_name,
+        event_date=event.metadata.event_date,
+        mode_label="RETROSPECTIVE EVENT REPLAY",
+        event_subtitle="29 AUG 2017 — MUMBAI DELUGE",
+        first_timestamp=summary.first_timestamp.isoformat() if hasattr(summary.first_timestamp, "isoformat") else str(summary.first_timestamp),
+        last_timestamp=summary.last_timestamp.isoformat() if hasattr(summary.last_timestamp, "isoformat") else str(summary.last_timestamp),
+        timestep_count=summary.timestep_count,
+        peak_modeled_depth_m=summary.peak_modeled_depth_m,
+        peak_flooded_area_m2=summary.peak_flooded_area_m2,
+        peak_flood_volume_m3=summary.peak_flood_volume_m3,
+        peak_surcharge_volume_m3=summary.peak_surcharge_volume_m3,
+        event_summary=event_summary,
+        provenance={
+            "rainfall": "SECONDARY-REPORT — literature-calibrated historical forcing",
+            "tide": "DERIVED — astronomical tide reconstruction",
+            "flood": "RETROSPECTIVE SIMULATION",
+            "benchmarks": "OBSERVED — validation only",
+            "elevation": "Copernicus GLO-30 DSM (30m)",
+            "drainage": "Authoritative BMC Storm Water GIS (1,240 conduits, 1,264 nodes)",
+        },
+        benchmarks_geojson=benchmarks_geojson,
+        validation_comparisons=val_comparisons,
+        timesteps=timesteps_response,
+    )
+
+    _HISTORICAL_2017_CACHE = response
+    return response

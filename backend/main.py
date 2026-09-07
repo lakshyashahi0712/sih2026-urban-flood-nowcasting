@@ -98,5 +98,5 @@ async def websocket_endpoint(websocket: WebSocket):
 
 if __name__ == "__main__":
     import uvicorn
-    app_target = "backend.main:app" if Path("backend").is_dir() else "main:app"
+    app_target = "main:app" if Path.cwd().name == "backend" else "backend.main:app"
     uvicorn.run(app_target, host="0.0.0.0", port=8000, reload=True)

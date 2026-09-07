@@ -13,18 +13,23 @@ try:
     from backend.app.infrastructure.rainfall.open_meteo import OpenMeteoAdapter
     from backend.app.infrastructure.rainfall.imd_radar import IMDRadarAdapter
     from backend.app.infrastructure.rainfall.composite_provider import CompositeRainfallProvider
+    from backend.app.infrastructure.rainfall.mesonet import MesonetAdapter
+    from backend.app.infrastructure.rainfall.nwp_comparison import NWPComparisonService, NWPBiasMetrics
 except ImportError:
     from app.domain.rainfall.models import RainfallRecord, RainfallStatus, SourceType
     from app.domain.rainfall.radar_models import RainfallProvenance
     from app.infrastructure.rainfall.open_meteo import OpenMeteoAdapter
     from app.infrastructure.rainfall.imd_radar import IMDRadarAdapter
     from app.infrastructure.rainfall.composite_provider import CompositeRainfallProvider
+    from app.infrastructure.rainfall.mesonet import MesonetAdapter
+    from app.infrastructure.rainfall.nwp_comparison import NWPComparisonService, NWPBiasMetrics
 
 router = APIRouter(prefix="/rainfall", tags=["rainfall"])
 
 # Module-level adapter instances
 _adapter: Optional[OpenMeteoAdapter] = None
 _radar_adapter: Optional[IMDRadarAdapter] = None
+_mesonet_adapter: Optional[MesonetAdapter] = None
 _composite_provider: Optional[CompositeRainfallProvider] = None
 
 
@@ -42,11 +47,19 @@ def get_radar_adapter() -> IMDRadarAdapter:
     return _radar_adapter
 
 
+def get_mesonet_adapter() -> MesonetAdapter:
+    global _mesonet_adapter
+    if _mesonet_adapter is None:
+        _mesonet_adapter = MesonetAdapter()
+    return _mesonet_adapter
+
+
 def get_composite_provider() -> CompositeRainfallProvider:
     global _composite_provider
     if _composite_provider is None:
         _composite_provider = CompositeRainfallProvider(
             radar_adapter=get_radar_adapter(),
+            mesonet_adapter=get_mesonet_adapter(),
             nwp_adapter=get_adapter(),
         )
     return _composite_provider
@@ -54,10 +67,13 @@ def get_composite_provider() -> CompositeRainfallProvider:
 
 async def close_adapter() -> None:
     """Close the adapter's HTTP client."""
-    global _adapter, _radar_adapter, _composite_provider
+    global _adapter, _radar_adapter, _mesonet_adapter, _composite_provider
     if _adapter is not None:
         await _adapter.close()
         _adapter = None
+    if _mesonet_adapter is not None:
+        await _mesonet_adapter.close()
+        _mesonet_adapter = None
     _radar_adapter = None
     _composite_provider = None
 
@@ -199,6 +215,76 @@ async def get_composite_rainfall(
         }
 
     return response_data
+
+
+@router.get("/bias")
+async def get_rainfall_bias(
+    use_cache: bool = Query(default=True, description="Allow cached/stale data on failure"),
+) -> dict:
+    """Compare observed Mesonet rainfall against NWP forecast and return bias metrics.
+
+    Fetches both Mesonet observations and NWP forecast, matches them by timestamp,
+    and computes per-interval error and aggregated bias statistics.
+
+    Returns NWPBiasMetrics including mean error, MAE, max error, and per-interval comparisons.
+    """
+    mesonet = get_mesonet_adapter()
+    nwp = get_adapter()
+
+    mesonet_series = None
+    nwp_series = None
+    mesonet_error = None
+    nwp_error = None
+
+    try:
+        mesonet_series = await mesonet.fetch(use_cache=use_cache)
+    except Exception as e:
+        mesonet_error = str(e)
+
+    try:
+        nwp_series = await nwp.fetch(use_cache=use_cache)
+    except Exception as e:
+        nwp_error = str(e)
+
+    if mesonet_series is None or nwp_series is None:
+        return {
+            "status": "UNAVAILABLE",
+            "mesonet_available": mesonet_series is not None,
+            "nwp_available": nwp_series is not None,
+            "mesonet_error": mesonet_error,
+            "nwp_error": nwp_error,
+            "message": "Both Mesonet observations and NWP forecast are required for bias comparison.",
+        }
+
+    # Determine if correction was applied by checking composite provider state
+    provider = get_composite_provider()
+    metrics = NWPComparisonService.compare(
+        observed=mesonet_series,
+        nwp=nwp_series,
+        correction_bound_mm=provider.max_correction_mm_per_hour,
+        correction_applied=False,  # This endpoint reports raw bias, not correction status
+    )
+
+    return {
+        "status": "OK",
+        "mesonet_available": True,
+        "nwp_available": True,
+        "matched_intervals": metrics.matched_intervals,
+        "mean_error_mm": metrics.mean_error_mm,
+        "mean_absolute_error_mm": metrics.mean_absolute_error_mm,
+        "max_error_mm": metrics.max_error_mm,
+        "correction_bound_mm": metrics.correction_bound_mm,
+        "comparisons": [
+            {
+                "timestamp": c.timestamp.isoformat(),
+                "observed_mm": c.observed_mm,
+                "nwp_mm": c.nwp_mm,
+                "error_mm": c.error_mm,
+                "relative_error": c.relative_error,
+            }
+            for c in metrics.comparisons
+        ],
+    }
 
 
 # Import constant for status endpoint

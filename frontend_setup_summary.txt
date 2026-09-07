@@ -1,0 +1,24 @@
+Insight: The frontend project does not specify an explicit Node.js version requirement in package.json, but the presence of "@types/node": "^24.13.3" in devDependencies suggests compatibility with Node.js 24.x.
+Source URL: file:///C:/Users/laksh/OneDrive/Desktop/sih2026/frontend/package.json
+Suggested section: Frontend Prerequisites
+Confidence: High
+
+Insight: Required npm packages for the frontend include dependencies: maplibre-gl@^6.7.0, react@^19.2.8, react-dom@^19.2.8; and devDependencies: @types/node@^24.13.3, @types/react@^19.2.18, @types/react-dom@^19.2.7, @vitejs/plugin-react@^6.1.0, oxlint@^1.79.0, typescript@~6.0.2, vite@^8.2.2.
+Source URL: file:///C:/Users/laksh/OneDrive/Desktop/sih2026/frontend/package.json
+Suggested section: Required Files
+Confidence: High
+
+Insight: The frontend can be started in development mode using the command `npm run dev` (which runs `vite`), built with `npm run build` (which runs `tsc -b && vite build`), and previewed with `npm run preview` (which runs `vite preview`).
+Source URL: file:///C:/Users/laksh/OneDrive/Desktop/sih2026/frontend/package.json
+Suggested section: Frontend Prerequisites
+Confidence: High
+
+Insight: Hardcoded API endpoints in the frontend code point to `http://localhost:8000` for various flood-related endpoints (e.g., `/flood/streets`, `/flood/forecast`, `/flood/historical/2017`) and a map style URL `https://tiles.openfreemap.org/styles/liberty` is used for the FloodMap component.
+Source URL: file:///C:/Users/laksh/OneDrive/Desktop/sih2026/frontend/src/components/FloodMap.tsx
+Suggested section: Required Files
+Confidence: High
+
+Insight: No environment variables are referenced in the frontend code (no usage of import.meta.env or process.env) and no .env files were found in the frontend directory, indicating that the frontend does not require any environment variables to run.
+Source URL: file:///C:/Users/laksh/OneDrive/Desktop/sih2026/frontend/src/components/FloodMap.tsx (and absence of .env files)
+Suggested section: Frontend Prerequisites
+Confidence: High

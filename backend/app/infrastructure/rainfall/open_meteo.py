@@ -7,17 +7,30 @@ from zoneinfo import ZoneInfo
 import httpx
 from pydantic import ValidationError
 
-from app.domain.rainfall.exceptions import (
-    RainfallAdapterTimeout,
-    RainfallAdapterHTTPError,
-    RainfallAdapterParseError,
-    RainfallAdapterMissingField,
-    RainfallAdapterUnitMismatch,
-    RainfallAdapterTimezoneMismatch,
-    RainfallAdapterEmptyForecast,
-    RainfallAdapterInvalidTimestamp,
-)
-from app.domain.rainfall.models import RainfallRecord, RainfallSeries, RainfallStatus, SourceType
+try:
+    from app.domain.rainfall.exceptions import (
+        RainfallAdapterTimeout,
+        RainfallAdapterHTTPError,
+        RainfallAdapterParseError,
+        RainfallAdapterMissingField,
+        RainfallAdapterUnitMismatch,
+        RainfallAdapterTimezoneMismatch,
+        RainfallAdapterEmptyForecast,
+        RainfallAdapterInvalidTimestamp,
+    )
+    from app.domain.rainfall.models import RainfallRecord, RainfallSeries, RainfallStatus, SourceType
+except ImportError:
+    from backend.app.domain.rainfall.exceptions import (
+        RainfallAdapterTimeout,
+        RainfallAdapterHTTPError,
+        RainfallAdapterParseError,
+        RainfallAdapterMissingField,
+        RainfallAdapterUnitMismatch,
+        RainfallAdapterTimezoneMismatch,
+        RainfallAdapterEmptyForecast,
+        RainfallAdapterInvalidTimestamp,
+    )
+    from backend.app.domain.rainfall.models import RainfallRecord, RainfallSeries, RainfallStatus, SourceType
 
 
 # Constants
@@ -87,7 +100,7 @@ class OpenMeteoAdapter:
                 # Update cache with fresh live data
                 self.cache.set(live_data)
                 return live_data
-            except (RainfallAdapterTimeout, RainfallAdapterHTTPError):
+            except Exception:
                 # Live failed, try to return cached data (if available)
                 cached = self.cache.get()
                 if cached is not None:
@@ -113,6 +126,8 @@ class OpenMeteoAdapter:
                 )
         except httpx.TimeoutException as e:
             raise RainfallAdapterTimeout(self.timeout) from e
+        except httpx.RequestError as e:
+            raise RainfallAdapterHTTPError(status_code=503, body=f"Network error: {e}") from e
 
         if response.status_code != 200:
             raise RainfallAdapterHTTPError(

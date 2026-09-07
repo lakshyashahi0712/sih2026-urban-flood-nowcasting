@@ -21,10 +21,12 @@ class SourceType(str, Enum):
 class RainfallProvenance(str, Enum):
     """Authoritative provenance tracking for precipitation inputs.
 
-    Never label NWP forecast as radar observation.
+    Never label NWP forecast as radar or Mesonet observation.
     """
     RADAR = "RADAR"
+    MESONET = "MESONET"
     NWP_FALLBACK = "NWP_FALLBACK"
+    NWP_CORRECTED = "NWP_CORRECTED"
     UNAVAILABLE = "UNAVAILABLE"
 
 
@@ -52,7 +54,7 @@ class RainfallRecord(BaseModel):
     status: RainfallStatus = Field(default=RainfallStatus.LIVE, description="Data freshness status")
     provenance: RainfallProvenance = Field(
         default=RainfallProvenance.NWP_FALLBACK,
-        description="Authoritative source provenance (RADAR, NWP_FALLBACK, UNAVAILABLE)"
+        description="Authoritative source provenance (RADAR, MESONET, NWP_CORRECTED, NWP_FALLBACK, UNAVAILABLE)"
     )
 
     @field_validator("timestamp", "interval_end", "acquired_at", mode="before")
