@@ -153,16 +153,7 @@ async def get_mumbai_rainfall(
 async def get_rainfall_status() -> dict:
     """Get adapter cache status without fetching."""
     adapter = get_adapter()
-    cached = adapter.cache.get()
-    return {
-        "cache_status": "LIVE" if cached else "EMPTY",
-        "cached_at": adapter.cache._timestamp.isoformat() if adapter.cache._timestamp else None,
-        "cache_ttl_minutes": 30,  # from open_meteo module
-        "source": "open-meteo",
-        "source_type": "forecast",
-        "resolution_minutes": 60,
-        "provenance": "NWP_FALLBACK",
-    }
+    return adapter.get_status()
 
 
 @router.get("/radar/diagnostics")
