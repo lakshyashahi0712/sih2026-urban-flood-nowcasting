@@ -1,0 +1,24 @@
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    ports:
+      - "8000:8000"
+    volumes:
+      # Locally-acquired evidence data stays on the host; the Delhi V2
+      # API reports NOT_READY components if it is absent.
+      - ./data:/app/data:ro
+    environment:
+      - FLOOD_EXTRA_ORIGINS=${FLOOD_EXTRA_ORIGINS:-}
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+    ports:
+      - "8080:80"
+    depends_on:
+      - backend
+    restart: unless-stopped

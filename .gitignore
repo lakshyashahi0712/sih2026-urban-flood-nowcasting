@@ -16,6 +16,7 @@ venv/
 
 # Claude Code local settings (may contain session-specific config)
 .claude/settings.local.json
+.claude/manual_test_output/
 
 # OS files
 Thumbs.db
@@ -28,7 +29,7 @@ Desktop.ini
 *.swp
 *.swo
 
-# Data files (acquired during Phase 0 — not committed with source)
+# Data files (acquired evidence — not committed with source; see README)
 /data/
 store/
 
@@ -51,11 +52,7 @@ node_modules/
 .env.*
 !.env.example
 
-# Node
-node_modules/
-.env
-.env.*
-!.env.example
-
 # Local agent/tooling state
 .superpowers/
+.freebuff/
+.claude/settings.json.backup

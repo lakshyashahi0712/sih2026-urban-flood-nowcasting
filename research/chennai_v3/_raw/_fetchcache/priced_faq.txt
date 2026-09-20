@@ -1,0 +1,292 @@
+STATUS: 200
+FINAL-URL: https://bhoonidhi.nrsc.gov.in/bhoonidhi/htmls/PricedDataFAQ.html
+CONTENT-TYPE: text/html
+============================================================
+
+ How are the users categorized?
+ User are categorized under following 3 categories:
+ • Government Entities (GE) – Government Entities (GE): Following declaration form (GE Declaration Form) is to be submitted to data[at]nrsc[dot]gov[dot]in for Indian government users to declare status as GE.
+ • Non-Government Entities (GE) – All Indian users other than GE are tagged as NGE users.
+ • ForeignEntities (FE) – All non-Indian users are tagged as Foreign Entities.
+ What is the pricing policy for EO data?
+ • As per Indian Space Policy 2023, satellite data of 5m and coarser is now free & open for all users.
+ • Data finer than 5m (except DEM, merged, mosaicked and customized products, etc) is open for Government Entities and priced for Non-Government Entities.
+ Who are Government Entities ? How to declare as GE? What is free for GE ?
+ As per the New Space Policy, it is imperative to categorize the existing and new users as GE (Government Entity) or NGE (Non Government Entity). A format of application is to be submitted by the agencies desirous of registering as Government Entities (GE). Desirous users can submit the filled in application form for registering themselves as GE's. Once the form is received, verified and the organisation is accepted as "GE", all the users registered with the corresponding domain name of that organisation will be tagged as "GE" automatically.
+ Declaration of Govt. Entity for IRS data dissemination
+ Document Link : GE Declaration Form 
+ • All Government agencies can access data for sensors with spatial resolution coarser than 5mtrs as free. (All archived Standard products and geo physical products)
+ • Certificate required for 0.5 m resolution data.
+ Are academic institutions under govt entity?
+ Government Academic Institutions may submit GE declaration form to data[at]nrsc[dot]gov[dot]in
+ Will the same data ordering account work? 
+ In compliance with Indian Space Policy 2023, henceforth, all commercial activities with respect to IRS satellite data and products would be handled by NSIL. Hence, the existing data ordering account with NRSC/ NDC is no longer valid(account number format: 0xxxx00). 
+ Which satellite imagery is available as priced to users?
+ The following satellites are available as priced to users
+ Column1
+ Column2
+ Column3
+ Cartosat-1
+ Cartosat-2
+ Cartosat-2S
+ Cartosat-3
+ EOS-04 (FRS1, FRS2)
+ KompSat-3
+ KompSat-3A
+ NovaSAR-1 (SAR)
+ RISAT-1 (FRS1, FRS2)
+ How do I pay money for purchasing commercial satellite data products now?
+ In compliance with Indian Space Policy 2023, henceforth, all commercial activities with respect to IRS satellite data and products would be handled by NSIL (eodata[at]nsilindia[dot]co[dot]in).
+ Payment can be done to the below Account.
+ NSIL Account Details for Indian Users: 
+ Account No: 093705500434,
+ Bank: ICICI Bank Ltd,
+ Branch: New BEL Road Bangalore,
+ IFSC Code: ICIC0000937
+ Terms of Payment: 100% advance payment
+ NSIL Account Details for Foreign Users:
+ For inward remittances / receiving funds in USD currency 
+ Beneficiary Bank Account No: 167006000003,
+ Beneficiary Name: NewSpace India Ltd,
+ SWIFT Code: ICICINBBCTS,
+ ABA FED NO. 021000089,
+ Routed through: CITY BANK N.A,
+ SWIFT CODE: CITIUS33XXX
+ How to open a new data ordering account at NSIL?
+ A data ordering account is mandatory for ordering priced data from Bhoonidhi. For a new data ordering account creation with NSIL, please send a mail (mentioning your user id) to NSIL at eodata[at]nsilindia[dot]co[dot]in. The new data ordering account created will start with "N" followed by 4 numbers and 2 zeros (Nxxxx00).
+ What will happen to my money already deposited in the old data ordering account? 
+ Contact data[at]nrsc[dot]gov[dot]in for queries on old data ordering accounts.
+ I am an existing user in NRSC. Shall i use the same userid for placing order at NSIL?
+ Yes, the existing user ID at Bhoonidhi will continue. Re-registration is not required. 
+ Which existing discounts (ftp, media, volume, academic, etc.) are applicable at NSIL?
+ For discounts, please contact NSIL at eodata[at]nsilindia[dot]co[dot]in
+ Is bharat kosh payment still valid? 
+ Bharatkosh payment modality is disabled from 30/Apr/2024. All payments are to be made to NSIL account. 
+ Are urgent products priced for more? 
+ For urgent requirements (delivery within 5-6 hours), additional charges of 50% would be applicable. All the normal priority products are serviced in "first come, first served" basis. 
+ What will happen to the orders already placed? 
+ The order for which payment is done and are already in our production chain, will be disseminated to you. All partial orders which are held due to non-availability of funds will be invalidated. Theusers are requested to get a newordering account opened with NSIL to place fresh orders.
+ For urgent requirements (delivery within 5-6 hours), additional charges of 50% would be applicable.For bulk order discounts, please contact NSIL at eodata[at]nsilindia[dot]co[dot]in. 
+ What will be the delay in payment and data delivery now?
+ The payment interface is with now with NSIL instead of Bharatkosh.Hence, once the payment is made, the payment details and the PI against which this payment is made is to be mailed to eodata[at]nsilindia[dot]co[dot]in. There will no change in data delivery timelines.
+ Is planning for future dates also priced? 
+ No, it's not priced but planning request confirmation is based on feasibility and is decide by the Planning manager at NRSC, NDC. Please forward your planning requests at to data[at]nrsc[dot]gov[dot]in
+ Planning Request has to be sent to NSIL or NRSC?
+ Planning request is to be send to NRSC, NDC at data[at]nrsc[dot]gov[dot]in
+ Media products are existing or removed? (existing at NRSC)
+ No media products.
+ What are the spatial resolutions ? 
+ The data in Bhoonidhi is from 0.28 m to 1 km based on the sensors.
+ Priced Data Ordering
+ EO Satellite Data Commercial Products 
+ Yellow tagged products are priced for all users , White are Free for GE and Priced for NGE 
+ SATELLITE 
+ SENSOR 
+ GSD 
+ PRODUCT TYPE 
+ SCENE SIZE 
+ Scene Price (Rs) - NGE 
+ Scene Price (Rs) - GE 
+ CARTOSAT-3 
+ PAN
+ 0.28m
+ GEO Orthokit
+ 17km x 17 km
+ 3,860
+ Free data
+ 0.28m
+ Ortho Rectified (without GCP)
+ 17km x 17 km
+ 4,810
+ Free data
+ 0.45m
+ Ortho Rectified (without GCP)
+ 17km x 17 km
+ 4,810
+ Free data
+ Mx
+ 1.10m
+ GEO Orthokit
+ 17km x 17 km
+ 3,860
+ Free data
+ 1.10m
+ Ortho Rectified (without GCP)
+ 17km x 17 km
+ 4,810
+ Free data
+ 1.10m
+ Ortho Rectified (without GCP)
+ 10km x 10km
+ 1,700
+ Free data
+ 1.10m
+ NCC & FCC (Ortho Rectified-without GCP)
+ 10km x 10km
+ 1,700
+ Free data
+ PAN+MX 
+ 0.45m 
+ Pan-sharpened 
+ 10km x 10km 
+ 2,400 
+ 1400 
+ 0.45m 
+ NCC & FCC (Pan-sharpened) 
+ 10km x 10km 
+ 2,400 
+ 1400 
+ CARTOSAT-2S 
+ PAN
+ 0.60m
+ GEO Orthokit
+ 9.8km x 9.8km
+ 2,060
+ Free data
+ 0.60m
+ Ortho Rectified(without GCP)
+ 9.8km x 9.8km
+ 3,400
+ Free data
+ Mx
+ 1.60m
+ GEO Orthokit
+ 9.8km x 9.8km
+ 2,060
+ Free data
+ 1.60m
+ Ortho Rectified(without GCP)
+ 9.8km x 9.8km
+ 3,400
+ Free data
+ 1.60m 
+ Ortho Mosaic (Min:2,Max : 4 ) 
+ 9.8km x 9.8km 
+ 3,400 
+ 2060 
+ 1.60m
+ NCC & FCC (Ortho Rectified-without GCP)
+ 9.8km x 9.8km
+ 3,400
+ Free data
+ PAN+MX 
+ 0.60m 
+ Pan-sharpened 
+ 9.8km x 9.8km 
+ 6,190 
+ 3650 
+ 0.60m 
+ Pan-sharpened Mosaic (Min:2, Max:4) 
+ 9.8km x 9.8km 
+ 6,190 
+ 3650 
+ 0.60m 
+ NCC & FCC (Pan-sharpened) 
+ 9.8km x 9.8km 
+ 6,190 
+ 3650 
+ KOMPSAT-3/3A 
+ PAN & MX 
+ 0.5, 2.2m 
+ Geo Orthokit, Bundled 
+ 15km x 15km 
+ 11,470 
+ 7930 
+ CARTOSAT-1 
+ PAN
+ 2.5m
+ Ortho Rectified(without GCP)
+ 27.5km x27.5km
+ 6,450
+ Free data
+ Stereo
+ 2.5m
+ RAD Ortho kit
+ 27.5km x27.5km
+ 5,110
+ Free data
+ CartoDEM 
+ 10m Posting 
+ DSM 
+ 14km x14km 
+ 6,290 
+ 4070 
+ CartoDEM 
+ 2.5m Posting 
+ DSM 
+ 14km x14km 
+ 6,290 
+ 4070 
+ CARTOSAT-2 
+ PAN
+ 1m
+ GEO Orthokit
+ 9.8km x 9.8km
+ 2,440
+ Free data
+ 1m
+ Ortho Rectified(without GCP)
+ 9.8km x 9.8km
+ 2,890
+ Free data
+ RISAT-1 
+ SAR FRS1 FRS2
+ 3m
+ Geometrically Terrain Corrected
+ 25km x 25km
+ 4,890
+ Free data
+ 3m
+ Single Look Complex
+ 25km x 25km
+ 4,890
+ Free data
+ 3m
+ Multi Look Ground Range
+ 25km x 25km
+ 4,890
+ Free data
+ EOS-04 
+ SAR FRS1 FRS2
+ 3m
+ Geometrically Terrain Corrected
+ 20km x 25 km 
+ 4,890
+ Free data
+ 3m
+ Single Look Complex
+ 20km x 25 km 
+ 4,890
+ Free data
+ 3m
+ Multi Look Ground Range
+ 20km x 25 km 
+ 4,890
+ Free data
+ 3m
+ Covariance 
+ 20km x 25 km 
+ 4,890
+ Free data
+ 3m
+ Polarimetric Decomposed
+ 20km x 25 km 
+ 4,890
+ Free data
+ NOVASAR-1 
+ All modes 
+ 6-33 m
+ Geometrically Terrain Corrected
+ 13-400km x 13-400km
+ 6,340
+ Free data
+ 6-33 m 
+ Single Look Complex Slant range 
+ 13-400km x 13-400km 
+ 6,340 
+ Free data
+ 6-33 m 
+ Multi Look Ground range 
+ 13-400 km x 13-400km 
+ 6,340 
+ Free data

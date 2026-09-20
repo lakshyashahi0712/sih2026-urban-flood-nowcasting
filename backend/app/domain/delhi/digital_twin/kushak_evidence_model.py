@@ -386,7 +386,17 @@ def backbone_slope_m_per_m(
             jid = row["junction"]
             raw = (row["chainage_m"] or "").strip()
             if jid in (upstream_junction, downstream_junction) and raw:
-                found.setdefault(jid, (float(raw), float(row["new_invert_m"])))
+                cand_chainage = float(raw)
+                cand_invert = float(row["new_invert_m"])
+                # The digitized chainage set contains section-group
+                # fragments (e.g. a "Part II" cluster) alongside the main
+                # trunk's single-label digitization. The trunk digitization
+                # is the MAXIMUM chainage for the junction; the fragments
+                # are shorter duplicates. Prefer the maximum so the corridor
+                # stationing, not a fragment, defines the slope.
+                prev = found.get(jid)
+                if prev is None or cand_chainage > prev[0]:
+                    found[jid] = (cand_chainage, cand_invert)
     if upstream_junction not in found or downstream_junction not in found:
         return None
     (ch_u, inv_u) = found[upstream_junction]

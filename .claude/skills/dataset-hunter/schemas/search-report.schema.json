@@ -1,0 +1,165 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Search Report Schema",
+  "type": "object",
+  "properties": {
+    "research_objective": {
+      "type": "string",
+      "description": "Original user request or research objective"
+    },
+    "search_interpretation": {
+      "type": "object",
+      "properties": {
+        "target_phenomenon": {
+          "type": "string",
+          "description": "Main phenomenon being studied"
+        },
+        "geography": {
+          "type": "string",
+          "description": "Geographic scope"
+        },
+        "time_period": {
+          "type": "string",
+          "description": "Temporal scope"
+        },
+        "variables": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Variables of interest"
+        },
+        "spatial_resolution": {
+          "type": "string",
+          "description": "Desired spatial resolution"
+        },
+        "temporal_resolution": {
+          "type": "string",
+          "description": "Desired temporal resolution"
+        },
+        "data_type": {
+          "type": "string",
+          "description": "Type of data needed"
+        },
+        "expected_format": {
+          "type": "string",
+          "description": "Preferred data format"
+        },
+        "intended_use": {
+          "type": "string",
+          "description": "How the data will be used"
+        },
+        "constraints": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Any constraints mentioned"
+        }
+      }
+    },
+    "expanded_search_concepts": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Generated search terms and synonyms"
+    },
+    "sources_searched": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "source_name": {
+            "type": "string",
+            "description": "Name of the source searched"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["success", "failed", "partial"],
+            "description": "Status of the search"
+          },
+          "candidates_found": {
+            "type": "integer",
+            "description": "Number of dataset candidates found"
+          },
+          "failure_reason": {
+            "type": "string",
+            "description": "Reason for failure (if applicable)"
+          }
+        }
+      },
+      "description": "Details about each source searched"
+    },
+    "total_candidates": {
+      "type": "integer",
+      "description": "Total number of dataset candidates found before deduplication"
+    },
+    "unique_datasets": {
+      "type": "integer",
+      "description": "Number of unique datasets after deduplication"
+    },
+    "duplicate_groups": {
+      "type": "integer",
+      "description": "Number of duplicate groups identified"
+    },
+    "top_datasets": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/dataset-record"
+      },
+      "description": "Top-ranked datasets"
+    },
+    "all_datasets": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/dataset-record"
+      },
+      "description": "All datasets found"
+    },
+    "search_metadata": {
+      "type": "object",
+      "properties": {
+        "timestamp": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When the search was performed"
+        },
+        "search_mode": {
+          "type": "string",
+          "enum": ["QUICK", "STANDARD", "DEEP", "TARGETED"],
+          "description": "Search mode used"
+        },
+        "tools_used": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Tools and APIs used in the search"
+        },
+        "failed_sources": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Sources that could not be searched"
+        },
+        "scoring_configuration": {
+          "type": "object",
+          "description": "Weights used for relevance scoring"
+        }
+      }
+    }
+  },
+  "definitions": {
+    "dataset-record": {
+      "$ref": "dataset-record.schema.json#"
+    }
+  },
+  "required": [
+    "research_objective",
+    "search_interpretation",
+    "sources_searched",
+    "search_metadata"
+  ]
+}

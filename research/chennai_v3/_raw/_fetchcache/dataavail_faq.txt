@@ -1,0 +1,118 @@
+STATUS: 200
+FINAL-URL: https://bhoonidhi.nrsc.gov.in/bhoonidhi/htmls/DataAvailabilityFAQ.html
+CONTENT-TYPE: text/html
+============================================================
+
+ Which period of EO data is available in ARCHIVES? 
+ EO data is available from 4th April 1988 to till date in ARCHIVES. Below are the details of the data availability from Archives for all satellites. The Satellites which has rupee symbol(₹) are Priced, others are Open. 
+ Satellite
+ Availability
+ Resolution
+ Aqua
+ 31-Dec-2003 - 31-Dec-2019
+ 500 m
+ CartoSat-1 (₹)
+ 8-May-2005 - 19-Feb-2019
+ 2.5 m
+ CartoSat-2 (₹)
+ 14-Apr-2007 - 23-May-2019
+ 0.8 m
+ CartoSat-2E (₹)
+ 25-Jun-2017 - till date
+ 0.65 m - 1.6 m
+ CartoSat-3 (₹)
+ 10-Jun-2020 - till date
+ 0.28 m - 1.1 m
+ EOS-04
+ 23-Mar-2022 - till date
+ 3.0 m - 33.0 m
+ EOS-06
+ 1-Apr-2023 - till date
+ 360 m
+ IRS-1A
+ 4-Apr-1988 - 28-May-1991
+ 36.0 m - 73 m
+ IRS-1B
+ 2-Oct-1991 - 9-Sep-2001
+ 36.0 m - 73 m
+ IRS-1C
+ 14-Nov-1996 - 20-Sep-2007
+ 5.8 m - 56.0 m
+ IRS-1D
+ 1-Jan-1998 - 20-Sep-2007
+ 5.8 m - 56.0 m
+ JPSS1
+ 15-Jan-2021 - till date
+ 375.0 m - 750.0 m
+ KompSat-3 (₹)
+ 1-Jan-2018 - 29-May-2020
+ 0.55 m
+ KompSat-3A (₹)
+ 1-Jan-2018 - 31-May-2020
+ 0.55 m
+ LandSat-8
+ 1-Jan-2017 - till date
+ 30 m
+ LandSat-9
+ 1-Apr-2022 - till date
+ 30 m
+ NOAA-11
+ 25-Aug-1994 - 13-Sep-1994
+ 1000 m
+ NOAA-12
+ 14-Sep-1994 - 4-Nov-1995
+ 1000 m
+ NOAA-14
+ 3-Apr-1995 - 22-Sep-2010
+ 1000 m
+ NOAA-16
+ 20-Jun-2001 - 11-Aug-2005
+ 1000 m
+ NOAA-17
+ 20-Sep-2005 - 13-Apr-2010
+ 1000 m
+ NOAA-18
+ 1-Oct-2005 - 9-Oct-2009
+ 1000 m
+ NOAA-19
+ 29-Apr-2010 - 29-Oct-2014
+ 1000 m
+ Novasar-1
+ 1-Oct-2019 - till date
+ 6.0 m - 30.0 m
+ OceanSat-1
+ 1-Jul-1999 - 29-Jul-2009
+ 360 m
+ OceanSat-2
+ 31-Dec-2009 - 3-May-2023
+ 360 m
+ RISAT-1
+ 1-Jul-2012 - 30-Sep-2016
+ 3.0 m - 30.0 m
+ ResourceSat-1
+ 7-Dec-2003 - 18-Nov-2023
+ 5.8 m - 56 m
+ ResourceSat-2
+ 8-May-2011 - till date
+ 5.8 m - 24.0 m
+ ResourceSat-2A
+ 18-Dec-2016 - till date
+ 5.8 m - 56 m
+ Sentinel-1A
+ 9-Oct-2019 - till date
+ 20 m
+ Sentinel-1B
+ 4-Oct-2019 - 23-Dec-2021
+ 20 m
+ Sentinel-2A
+ 1-Oct-2019 - till date
+ 10 m
+ Sentinel-2B
+ 1-Oct-2019 - till date
+ 10 m
+ Suomi-NPP
+ 15-Jan-2021 - till date
+ 375.0 m - 750.0 m
+ Terra
+ 1-Oct-2002 - 31-Dec-2019
+ 500 m

@@ -1,0 +1,90 @@
+STATUS: 200
+FINAL-URL: https://www.nrsc.gov.in/nrscnew/Apps_LULC.php
+CONTENT-TYPE: text/html; charset=UTF-8
+============================================================
+
+ &#9776; 
+ Site Map 
+ Contact Us 
+ RTI 
+ Career 
+ Tenders 
+ Internal Committee 
+ Skip to main content 
+ 100%
+ English
+ | 
+ हिंदी
+ Select website language 
+ English
+ हिन्दी
+ Land Use-Land Cover
+ Applications 
+ Land Use-Land Cover 
+ Applications 
+ Show Menu 
+ Technical Details 
+ Overview 
+ Applications 
+ Sensors 
+ Users 
+ Portals 
+ Land Use and Land Cover - 1 : 250000 scale
+ The Natural Resources Census programme of ISRO has scope for generation of maps of Land Use Land Cover and seasonal agricultural information during kharif, rabi, and zaid seasons in near real-time at 1:250000 scale. AWiFS sensor data onboard Resourcesat-1, 2, and 2A is extensively used for this project, and annual maps are generated every year since the 2004-05 crop year. The main focus of the project is to monitor the agricultural situation and estimate the net sown area at the regional level across the country. The LULC-250K information is hosted on Bhuvan–LULC 250K.
+ Land Use and Land Cover - 1 : 50000 scale
+ Land Use Land Cover information in 1:50,000 scale is generated in the country using three seasons of IRS LISS-III data from 2005-06, 2011-12, and 2015-16. A 54-level classification system is used while mapping the land use / land cover classes.
+ Read More 
+ Land Use / Land Cover Mapping at 1:10000 scale
+ Land Use Land Cover (LULC) mapping was carried out at 1:10000 scale using satellite data of Resourcesat-2 LISS-IV sensor, which has a spatial resolution of 5.8m under the SIS-DP project, and is hosted on the Bhuvan Panchayat portal. This is useful for drawing land and water resource development plans at the village/panchayat level.
+ National Wastelands Mapping : 1:50,000 scale
+ National wasteland mapping is being done at different time intervals since 1982. Presently, mapping has been completed 5 times since 1982 at NRSC. Waste land mapping was done during 1980-82 (1: 1 million scale- 8 classes), 2000 (1 : 250000 scale – 13 classes), 2003-04 (1:50000 scale-28 classes), 2005-06 (1:50000 scale-28 classes), change mapping during 2008-09, 2015-16.
+ Read More 
+ Pilot study Assessment of Desertification Risk
+ Development of a comprehensive model for the assessment of desertiﬁcation risk in Jodhpur district of Rajasthan using desertification indicators grouped under categories like soil, climate, vegetation and socioeconomic parameters is done using satellite-derived information layers and other ancillary data. Desertification risk assessment model was developed using step wise multiple regression analysis. The developed desertification risk index can be used for selecting appropriate land management practices and techniques for combating desertification.
+ 1 
+ 2 
+ LULC APPLICATIONS
+ Net Sown Crop Area 
+ Crop Recurrence Map
+ LULC APPLICATIONS 
+ Net Sown Crop Area 
+ Crop Recurrence Map
+ Hidden Title 
+ &times; 
+ &times; 
+ Land Use and Land Cover - 1 : 50000 scale
+ Land Use Land Cover information in 1: 50,000 scale is generated in the country using three seasons IRS LISS-III data of 2005-06, 2011-12 and 2015-16. 54 level-III classification system is used while mapping the land use / land cover classes. LU/LC categories are interpreted based on image parameters viz. tone, texture, pattern, size, shape and contextual association for delineating the Levels- I & II categories by Heads-on (onscreen) digitization methods. Change mapping is also carried out to depict the LULC change over 2005-06 to 2011-12 period.
+ This change LULC data has given insight of the major changes happening in the Land Use / Land Cover for the country. This enables the use of these database beyond the administrative boundary like river basin, geomorphic unit wise, agro climatic zone wise etc. Now these LULC database are being updated using 2015-16 ortho rectified IRS LISS-III satellite imagery. The LULC-50K information is hosted on Bhuvan –LULC 50K.
+ The project is executed with the participation of all state level organizations. This information is serving as base line information for many developmental programmes of the government and is of help for policy making for optimal management of natural resources. Researchers and climate modeler are using it as large scale and reliable input for hydrological modelling and climate studies.
+ &times; 
+ National Wastelands Mapping : 1:50,000 scale
+ National wasteland mapping is being done at different time intervals since 1982. Presently, mapping has been completed 5 times since 1982 at NRSC. Waste land mapping was done during 1980-82 (1: 1 million scale- 8 classes), 2000 (1 : 250000 scale – 13 classes), 2003-04 (1:50000 scale-28 classes), 2005-06 (1:50000 scale-28 classes), change mapping during 2008-09, 2015-16.
+ Wastelands area estimates have served a basis for taking up wastelands reclamation by different states. Spatial maps and database can be utilized to identify the suitable areas for the establishment of various infrastructure projects in the different parts of the country. The database is also being used for watershed prioritization, identification of potential areas for agriculture / afforestation etc. Recent wasteland database is hosted on Bhuvan-Wastelands.
+ Support
+ Contact Us 
+ Internal Committee 
+ Site Map 
+ Terms and Conditions 
+ Feedback NEW 
+ Organization
+ Career 
+ Eprocurement 
+ RTI 
+ Disclaimer 
+ Privacy Policy 
+ Tenders 
+ Others
+ Vigilance Administration 
+ Web Information Manager 
+ ISO Certification 
+ CHSS Portal 
+ ISRO Centres 
+ Connect With Us
+ ↑ 
+ © Copyright 2025 
+ NRSC All Rights Reserved. 
+ Last Updated: 
+27-04-2026 
+ 👁️ 
+ Page Views: 64,049,891 
+ 

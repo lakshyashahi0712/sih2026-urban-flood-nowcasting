@@ -1,1 +1,4 @@
-- [OpenMeteo adapter recovery](memory/openmeteo-adapter-recovery.md) — Recovered the broken OpenMeteo adapter implementation and fixed all tests
+- [Delhi Traffic Police Waterlogging Access Audit Correction](memory/delhi-traffic-police-waterlogging-access-audit-correction.md) — Updated audit to reflect user assertion of table existence with blocked access, verdict CONDITIONAL GO
+- [Delhi Government / MCD / NDMC / I&FC Flood-Observation Access Audit](memory/delhi-gov-mcd-ndmc-ifc-flood-observation-access-audit.md) — Completed access audit for Delhi Government/MCD/NDMC/I&FC flood observation datasets, resulting in NO-GO verdict
+- [Delhi Satellite Historical Flood-Extent Access Audit](memory/delhi-satellite-flood-extent-access-audit.md) — Completed access audit for satellite historical flood-extent data via Copernicus Data Space OData API, resulting in NO-GO verdict due to API inaccessibility
+- [Delhi CWC Yamuna Hydrologic Access Audit](memory/delhi-cwc-yamuna-hydrologic-access-audit.md) — Completed access audit for Central Water Commission (CWC) historical Yamuna hydrologic observations, resulting in NO-GO verdict due to data release requiring formal requests

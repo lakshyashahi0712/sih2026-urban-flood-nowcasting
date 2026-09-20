@@ -1,0 +1,799 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta name="viewport" content="width=device-width, initial-scale=1"/>
+        <title>Browse &amp; Order</title>
+        <link rel="icon" href="images/isroLogo.jpg" type="image/gif" sizes="16x16">
+
+        <link rel="stylesheet" href="css/bootstrap.min.css"/>
+        <link href="css/modal.css" rel="stylesheet" type="text/css" />
+        <link href="css/paneltabs.css" rel="stylesheet" type="text/css"/>
+        <link rel="stylesheet" href="css/w3.css"/>
+        <link rel="stylesheet" href="css/styles.css"/>
+
+        <script src="js/jquery.min.js" type="text/javascript"></script>
+        <script src="js/bootstrap.min.js" type="text/javascript"></script>
+        <script src="js/LoginVals.js" type="text/javascript" async></script>
+        <script src="js/bootbox.min.js" type="text/javascript" async></script>
+        <script src="js/odap.js" type="text/javascript"></script>
+        <script src="js/ValidateLocation.js" type="text/javascript" async></script>
+
+        <link rel="stylesheet" href="leaflet/leaflet.css" />
+        <script src="leaflet/leaflet.js"></script>
+        <link rel="stylesheet" href="leaflet/draw/leaflet.draw.css" />
+        <script src="leaflet/draw/leaflet.draw.js"></script>
+        <script src="leaflet/leaflet.shapefile.js"></script>
+        <script src="leaflet/shp.js"></script>
+
+        <script type="text/javascript" src="leaflet/coordinates/Leaflet.Coordinates-0.1.5.min.js"></script>
+        <link rel="stylesheet" href="leaflet/coordinates/Leaflet.Coordinates-0.1.5.css"/>
+        <script src="leaflet/proj4/proj4-compressed.js"></script>
+        <script src="leaflet/proj4/proj4leaflet.js"></script>
+        <script src="leaflet/proj4/proj4.js"></script>
+        <link rel="stylesheet" href="leaflet/dialog/Leaflet.Dialog.css"/>
+        <script src="leaflet/dialog/Leaflet.Dialog.js"></script>
+
+        <script src="js/md5.js" type="text/javascript" async></script>
+        <script src="js/simpledrag.js" type="text/javascript"></script>
+
+        <script type="text/javascript">
+            var datefield = document.createElement("input");
+            datefield.setAttribute("type", "date");
+            if (datefield.type !== "date") { //if browser doesn't support input type="date", load files for jQuery UI Date Picker
+                document.write('<link href="css/jquery-ui.css" rel="stylesheet" type="text/css" />\n');
+                document.write('<script src="js/jquery-old.min.js"><\/script>\n');
+                document.write('<script src="js/jquery-ui.min.js"><\/script>\n');
+            }
+        </script>
+
+        <style>
+            .marquee {
+                margin: 1% auto;
+                white-space: nowrap;
+                overflow: hidden;
+                /*position: absolute;*/
+                /*font-size: larger;*/
+                font-weight: bold;
+                color: lightsalmon;
+            }
+
+            .marquee span {
+                display: inline-block;
+                padding-left: 10%;
+                animation: marquee 30s linear infinite;
+            }
+
+            .marquee2 span {
+                animation-delay: 2.5s;
+                color: #fff;
+            }
+
+            @keyframes marquee {
+                0% {
+                    transform: translate(0, 0);
+                }
+                100% {
+                    transform: translate(-100%, 0);
+                }
+            }
+            
+            .blinking-bell {
+                color: #d9534f;
+                font-size: 18px;
+                animation: bellBlink 1s infinite;
+            }
+
+            @keyframes bellBlink {
+                0%, 100% {
+                    color: #d9534f;
+                    opacity: 1;
+                }
+                50% {
+                    color: #ff3535;
+                    opacity: 0.5;
+                }
+            }
+        </style>
+    </head>
+    <body>
+        <header>
+            <div align="center">    
+                <img class="img-responsive" style="padding: 0px 0px 2px 0px; width: -webkit-fill-available; width: -moz-available" src="images/header.webp" alt="" />
+            </div> 
+
+            <nav class="navbar navbar-inverse">        
+                <div class="container-fluid">
+                    <div class="collapse navbar-collapse" id="myNavbar">
+                        <ul class="nav navbar-nav">
+                            <li class="nav-item"><a id="ds_link" href="#" onclick="loadPage('search');">Explore</a></li>
+                            <li class="nav-item"><a id="da_link" href="#" onclick="loadPage('da');">Archives</a></li>
+                            <li class="nav-item"><a id="pi_link" href="#" onclick="loadPage('pi');">PI Actions</a></li>
+                            <li class="nav-item dropdown">
+                                <a class="dropdown-toggle" data-toggle="dropdown" href="#">Utilities<span class="caret"></span></a>
+                                <ul class="dropdown-menu">
+                                    <li><a class="dropdown-item" id="ss_view" href="#" onclick="loadPage('ssView');">Saved Searches</a></li>
+                                    <li><a class="dropdown-item" id="sid_view" href="#" onclick="loadPage('sidView');">Search ID Monitor</a></li>
+                                    <li><a class="dropdown-item" id="osv_view" href="#" onclick="loadPage('osvView');">Order Status Monitor</a></li>
+                                    <li id="nos_link" style="display:none;"><a class="dropdown-item" id="nosView" href="#" onclick="loadPage('nosView');">NSIL Order Status Monitor</a></li>
+                                    <li id="apa_link" style="display:none;"><a class="dropdown-item" id="apaView" href="#" onclick="loadPage('apaView');">APA Status Monitor</a></li>
+                                    <li><a class="dropdown-item" id="proc_tools" href="/bhoonidhi/help/tools.html" target="_blank">Processing Tools</a></li>
+                                </ul>
+                            </li>
+                            <!--                            <li class="nav-item dropdown">
+                                                            <a class="dropdown-toggle" data-toggle="dropdown" href="#">Bhoonidhi Navigator<span class="caret"></span></a>
+                                                            <ul class="dropdown-menu">
+                                                                <li><a class="dropdown-item" href="home.html">Home</a></li>
+                                                                <li><a class="dropdown-item" href="../vista/vista.html">Visualization</a></li>
+                                                                <li><a class="dropdown-item" href="#">Upgrah</a></li>
+                                                            </ul>
+                                                        </li>-->
+                            <li class="nav-item dropdown" id="dm_link" style="display:none;">
+                                <a class="dropdown-toggle" data-toggle="dropdown" href="#">Deputy Manager<span class="caret"></span></a>
+                                <ul class="dropdown-menu">
+                                    <li><a class="dropdown-item" href="#" onclick="document.getElementById('depMgrModal').style.display = 'block';">User Login</a></li>
+                                </ul>
+                            </li>
+                            <!--<li class="nav-item"><a id="dm_link2" style="display:none;" href="#" onclick="loadPage('dm');">DM</a></li>-->
+                        </ul>
+
+                        <!--                        <ul class="nav navbar-nav">
+                                                    <li><div class="marquee">
+                                                            <span>EOS-04 NRB India mosaic and water spread available as 1x1 deg tiles.</span>
+                                                        </div>
+                                                    </li>
+                                                </ul>-->
+                        <ul class="nav navbar-nav navbar-right">
+                            <li>
+                                <a href="#"
+                                   id="mailNotify"
+                                   data-toggle="popover"
+                                   data-trigger="hover click"
+                                   data-placement="bottom"
+                                   data-html="true"
+                                   title="<b>Email Notification</b>"
+                                   data-content="If you do not receive any expected email communication from Bhoonidhi, please check your <b>Spam/Junk</b> folder. If the email is not found there, contact bhoonidhi[at]nrsc[dot]gov[dot]in"
+                                   style="cursor:pointer;">
+                                    <span class="glyphicon glyphicon-bell blinking-bell"></span>
+                                </a>
+                            </li>
+                            <li><a href="#" onclick="callLogOut();" id="logOutId">LogOut</a></li>
+                            <!--<li><a href="#" onclick="callLogin('LOGIN');" id="loginId" ><span class="glyphicon glyphicon-log-in"></span> Login</a></li>-->
+                            <li><a onclick="callLogin(loginType);" target="_blank" id="loginId" ><span class="glyphicon glyphicon-log-in"></span> Login</a></li>
+                            <li><a href="/bhoonidhi/UserProfile.html" target="_blank" id="userProfBtn" style="display:none;" title="User Profile"><span class="glyphicon glyphicon-user"></span></a></li>
+                            <li><a href="https://bhoonidhi.nrsc.gov.in/bhoonidhi/help/" style="" target="_blank" title="Help">Help</a></li>
+                            <!--<li><a href="https://bhoonidhi.nrsc.gov.in/bhoonidhi/help/" style="" target="_blank" title="Help"><span class="glyphicon glyphicon-info-sign"></span>Help</a></li>-->
+                            <!--<li><a href="https://bhoonidhi.nrsc.gov.in/bhoonidhi/help/" style="" target="_blank" title="Help"><img src="images/help2.png" height="16" width="16"></a></li>-->
+                            <li><a href="/bhoonidhi/home.html" style="" target="_blank" title="Bhoonidhi Home"><span class="glyphicon glyphicon-home"></span></a></li>
+                        </ul>
+
+                    </div>
+                    <div class="navbar-header">
+                        <button type="button" class="navbar-toggle" data-toggle="collapse" data-target="#myNavbar">
+                            <span class="icon-bar"></span>
+                            <span class="icon-bar"></span>
+                            <span class="icon-bar"></span>                        
+                        </button> 
+                    </div>
+                </div>
+            </nav>
+        </header>
+
+        <div class="panes-container">
+            <div class="left-pane col-sm-5 col-md-4 col-lg-4" id="left-pane">
+                <div id="daDiv" style="display: block;"></div>
+                <div id="odapDiv" style="display: none;"></div>
+                <div id="piActionsDiv" style="display: none;"></div>
+                <div id="svDiv" style="display: none;"></div>
+                <div id="osvDiv" style="display: none;"></div>
+                <div id="nosDiv" style="display: none;"></div>
+                <div id="apaDiv" style="display: none;"></div>
+                <div id="ssDiv" style="display: none;"></div>
+            </div>
+            <div class="panes-separator" id="panes-separator"></div>
+            <div class="right-pane" id="map">
+            </div>
+        </div>
+
+        <footer>
+            <nav class="navbar navbar-inverse">
+                <div class="container-fluid">
+                    <div class="navbar-header">
+                        <button type="button" class="navbar-toggle" data-toggle="collapse" data-target="#myFooter">
+                            <span class="icon-bar"></span>
+                            <span class="icon-bar"></span>
+                            <span class="icon-bar"></span>                        
+                        </button>
+                        <a class="navbar-brand" href="#">
+                            <!--<img src="https://counter8.freecounter.ovh/private/freecounterstat.php?c=cglpdkh7hdg1e2hs3kfwfz9eq5435g16" border="0" title="website counter code" alt="website counter code"></a>-->
+                            <label class="control-label" style="font-family: verdana;  font-size: 14px; padding-left: 10px;color:#ff7ea5; padding-right: 10px;padding-top: 4px;"  id="userLoginId">Browsers supported: Firefox 60+, Chrome 78+, Edge 18+, Opera 64+</label>
+                        </a>
+                    </div>
+                    <div class="collapse navbar-collapse" id="myFooter">
+                        <ul class="nav navbar-nav navbar-right" style="width: 600px;">
+                            <li style="font-size: 10pt;" ><a onclick="callAboutUs();">About Us</a></li>
+                            <!--<li style="font-size: 10pt;" ><a href="htmls/Bhoonidhi-ISROOpenDataAccess-UserManual-V1.1.pdf" target="_blank">Help</a></li>-->
+                            <li style="font-size: 10pt;" ><a href="/bhoonidhi/help/" target="_blank">Help</a></li>
+                            <li style="font-size: 10pt;" ><a href="htmls/TnC.html" target="_blank">Terms&Conditions</a></li>
+                            <li style="font-size: 10pt;" ><a onclick="callDC();" >Disclaimer</a></li>
+                            <li style="font-size: 10pt;" ><a href="htmls/FAQ2.html" target="_blank">FAQ</a></li>
+                            <li style="font-size: 8pt;" ><a><span style="font-size: 10pt;" >&copy;</span> Bhoonidhi: ISRO/NRSC, 2020</a></li>
+                        </ul>
+                    </div>
+                </div>      
+            </nav>
+        </footer>
+
+        <!--        <div id="loginFormId" class="modal" style="width: 400px; padding-left: 10px;">
+                    <div class="modal-content animate form-horizontal" id="LoginForm">
+                        <div class="imgcontainer">
+                            <span onclick="document.getElementById('loginFormId').style.display = 'none'" class="close" title="Close Modal">&times;</span>
+                              <img src="images/img_avatar.jpg" alt="Avatar" class="avatar">
+                            <img  src="images/login2.gif" alt="Avatar"   class="avatar" height="270" width="450"  style=" align-content: center;text-align: center">
+                        </div>
+                        <div style="padding: 16px; padding-right: 16px;" >
+                            <label class="control-label"><b>Login ID</b></label>
+                            <input class="form-control" type="text" placeholder="Enter Username" id="login" required>
+                            <label class="control-label" ><b>Password</b></label>
+                            <input class="form-control" type="password" placeholder="Enter Password"  id="password" AUTOCOMPLETE="off" required >
+                            <br>
+                            <button type="button" class="btn btn-primary"  data-dismiss="modal" onclick="validateLogin()">Login</button>
+                            <span style="margin-bottom:10px; margin-left: 10px; margin-right: 10px;" > <a href="/bhoonidhi/registration.html" target="_blank">New 
+                                    User</a></span>
+                            <span> <a href="/bhoonidhi/ForgotPassword.html" target="_blank">Forgot Password</a></span>
+                        </div>
+                    </div>
+                </div>-->
+
+
+        <div id="depMgrModal" class="modal" style="width: 400px; padding-left: 10px;">
+            <div class="modal-content animate form-horizontal" id="depMgrUsrForm">
+                <div class="imgcontainer">
+                    <!--<span onclick="document.getElementById('depMgrUsrForm').style.display = 'none';" class="close2" title="Close Modal">&times;</span>-->
+                    <button type="button" class="close" data-dismiss="modal" onclick="document.getElementById('depMgrModal').style.display = 'none';">&times;</button>
+                </div>
+                <div class="modal-header">
+                    <div><h4>User Login</h4></div>
+                </div>
+                <div style="padding: 16px; padding-right: 16px;" >
+                    <label class="control-label" for="usrMode"></label>
+                    <div>
+                        <select id="usrMode" name="usrMode" class="form-control">
+                            <option value="OFFLINE" selected>OFFLINE</option>
+                            <option value="PROXY">PROXY</option>
+                        </select>
+                    </div><br>
+
+                    <label class="control-label" for="usrInfoIp"></label>
+                    <div>
+                        <select id="usrInfoIp" name="usrInfoIp" class="form-control" onchange="getDMUsrInput()">
+                            <option value="DMUsrId" selected>User ID</option>
+                            <option value="DMUsrAcc">User Account</option>
+                        </select>
+                    </div><br>
+                    <div id="DMUsrIdEl">
+                        <label class="control-label"><b>User ID</b></label><br>
+                        <input class="form-control" type="text" placeholder="Enter User ID" id="DMUsrId" required value=""><br>
+                    </div>
+                    <!--<div>OR</div><br>-->
+                    <div id="DMUsrAccEl" style="display:none;">
+                        <label class="control-label" ><b>Account No.</b></label><br>
+                        <input class="form-control" type="text" placeholder="User Account Number"  id="DMUsrAcc" required >
+                    </div>
+                    <br>
+                    <button type="button" class="btn btn-primary"  data-dismiss="modal" onclick="enableUsrSession()">Submit</button>
+                </div>
+            </div>
+        </div>
+        <!-- Modal -->
+
+        <!--        <div id="feedBackModal" class="modalf" style="align:center;"  tabindex="-1" role="dialog">
+                    <div class="modal-content">
+                        <div class="modalf-header">
+                            <h5 style="color:maroon; align:center; text-align: center">Bhoonidhi Survey</h5>  
+                            <label  style="color:blue" class="control-label" id="feedBackUserId" >Dear User,</label>
+                        </div>
+                        <div class="modalf-body" >
+                            <div id="contact">
+                            </div> 
+                        </div>
+                        <div class="modalf-footer" >
+                            <button type="button" class="btn  btn-primary" data-dismiss="modal" id="buttonFeedBackClass" >Submit</button>
+                        </div>
+                    </div>
+                </div>-->
+
+        <div   class="modal"  id="AboutUs" style="width:1000px;">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <span class="close1" id="abtus">&times;</span>
+                    <div><h4><img src="images/AboutUs.jpg" height="40" width="40">&ensp;About Us</h4></div>
+                </div>
+                <div align="left" style="color: black ; background-color:#ffffff; margin: 20px;text-align: justify;line-height: 1.3em">
+                    <p>Welcome to National Remote Sensing Centre ( NRSC) ,  the nodal centre for hosting Satellite Data Products from IRS satellites and Foreign Satellites. The Data coverage is primarily  over India and surroundings . The satellites are tasked in a programmatic manner  and also  on-demand  to specific area of Interest limited by the mission specifications. NRSC also acquires and archives data of global regions for disasters, calibrations and specific studies. </p>
+                    <p>Satellite data  received at ground station is automatically transferred into high end data  processing, archiving and storage systems. Complex satellite / sensor specific algorithms are used for automated data processing for initial corrections based satellite ephemeris data like orbit and attitude, accession catalogues, etc. Further, geometric and radiometric corrections are carried out for generation of products for dissemination to the users. The open and priced Satellite data can be searched and ordered through Bhoonidhi hosted on internet.</p>
+                    <p>As a result of  Cooperation Arrangement  with the European Commission and the Department of Space of India Under the Copernicus programme, the  Sentinel series data is being downloaded  as a  privileged  user to build the  regional data access  hub for  enhanced  service to Indian users.</p>
+
+                    <p>Bhoonidhi - ISRO Open Data Access is a  single window , one stop hub which facilitates the dissemination of coarse and medium resolution satellite data products to online users on web. Data from IRS and NON-IRS  sensors are made available .  IRS and Landsat-8 data is processed at IMGEOS however  Sentinel series data is made available from ESA site. Bhoonidhi presents a fresh new look and interface for discovering ISRO/NRSC Earth Observation data. It allows to download instantly if available from the online storage. The other products will be made available as delayed Download. The user is intimated once the products are made available for online download through email and SMS. A Batch Downloader utility is provided to download batch of products.</p>
+                    <p>Bhoonidhi will be continually updated taking into account the user feedback and other enhancements which are currently planned. Your feedback will be critical in us ensuring that you are able to find and access the data you need in the best way possible. </p>
+                </div>
+            </div>
+        </div>    
+        <span class="close1" id="tc">&times;</span>
+        <div   class="modal"  id="dc" style="width:1000px;" >
+            <div class="modal-content">
+                <div class="modal-header">
+                    <span class="close1" id="dcc">&times;</span>
+                    <div><h4><img src="images/disclaimer.jpg" height="40" width="40">&ensp;Disclaimer</h4></div>
+                </div>
+                <div align="left" style="color: black ; background-color:#ffffff; text-align:justify;margin:20px;">
+                    <p>Neither the owner, developer, and/or operator of this website are responsible or can be held liable in any way for any information and/or 
+                        data, including downloads, shown on or acquired from this website. Information and/or data, including downloads, are to be applied at your 
+                        own risk and/or discretion; there is no guarantee of accuracy of any information and/or data affiliated with this website. This includes all
+                        information and/or data that are accessible with or without logging in. All data has limitations of radiometric and geometric accuracy.</p>
+                </div>
+            </div>
+        </div>
+        <script>
+            $(document).ready(function () {
+//                document.getElementById('depMgrModal').style.display = "block";
+                $("#logOutId").hide();
+                $('#mailNotify').popover({
+                    container: 'body'
+                });
+                batchDownPath = "";
+                var loginType = "HOME";
+                getDate();
+                $("#ds_link").click();
+                //validateSession();
+                setInterval(function () {
+                    if (localStorage.hasOwnProperty("userLogin") && localStorage.getItem("userLogin") === "true") // user login
+                        checkLogin();
+                }, 1000); // every second
+                setInterval(function () {
+                    if (localStorage.getItem("userId") !== "")
+                        checkLogin();
+                }, 10000); // every 10 seconds
+
+                localStorage.setItem("BhIndexOpen", "true");
+                window.addEventListener("beforeunload", () => {
+                    localStorage.removeItem("BhIndexOpen");
+                });
+                $("#map").load("mapInterface.html");
+                $("#daDiv").load("DataAv.html");
+                $("#odapDiv").load("DataSearch.html");
+                $("#svDiv").load("sidview.html");
+                $("#piActionsDiv").load("PI_actions.html");
+                $("#osvDiv").load("OrderStatusMonitor.html");
+                $("#nosDiv").load("NsilOrderStatusMonitor.html");
+                $("#apaDiv").load("APAStatusMonitor.html");
+                $("#ssDiv").load("SavedSearch.html");
+            });
+
+            document.addEventListener('visibilitychange', () => {
+                if (document.visibilityState === 'visible') {
+//                    if ((localStorage.getItem("oprId") != null) && (localStorage.getItem("oprId") !== localStorage.getItem("userId"))) {
+//                        var memUserText = "Welcome " + localStorage.getItem("userName");
+//                        if ($("#userLoginId").text() !== memUserText) {
+//                            location.reload();
+//                        }
+//                    }
+                }
+            });
+
+//            window.onload = function () {
+//                setTimeout(function () {
+//                    var helplinkGE = "<a href='https://bhoonidhi.nrsc.gov.in//bhoonidhi_resources/help/docs/Bhoonidhi_Indian_GE_Declaration_Form_v1.1.docx' target='_blank' class='btn btn-link' role='button' aria-disabled='true' style='padding:0px;'>GE Declaration Form v1.1</a>";
+//                    //var helplinkPayments = "<a href='https://bhoonidhi.nrsc.gov.in/imgarchive/bhoonidhi_videos_help/Commercial_Products_FAQ.pdf' target='_blank' class='btn btn-link' role='button' aria-disabled='true' style='padding:0px;'>Commercial Data FAQs</a>";
+//                    var helplinkPayments = "<a href='https://bhoonidhi.nrsc.gov.in/imgarchive/bhoonidhi_videos_help/Commercial_Products_Ordering_@Bhoonidhi_Thr_NSIL_Interface_FAQ.pdf' target='_blank' class='btn btn-link' role='button' aria-disabled='true' style='padding:0px;'>Commercial Data FAQs</a>";
+//
+//                    var message = "As per Indian Space Policy 2023, satellite data of 5m and coarser is now free & open for all users.";
+//                    var message0 = "Data finer than 5m (except DEM, merged, mosaicked and customized products, etc) is open for Government Entities (" + helplinkGE + ") and priced for Non-Government Entities.";
+//                    var message1 = "From 01 May 2024, all commercial activities with respect to IRS satellite data and products are being handled by NSIL. Bhoonidhi continues to be the data dissemination platform (" + helplinkPayments + ").";
+//                    var feedbackMessage = "For any queries or feedback, please mail to ";
+//                    var emailMessage = "bhoonidhi[at]nrsc[dot]gov[dot]in";
+//
+//                    var messageHeader = '<h2 style="color:white" class="modal-alerting-header bluetitle">Release Update</h2><br/>';
+//                    var messageBody = '<p class="text-left mb-0" style="padding-bottom: 10px;">' + message + '</p>' +
+//                            '<p class="text-left mb-0" style="padding-bottom: 10px;">' + message0 + '</p>' +
+//                            '<p class="text-left mb-0" style="padding-bottom: 10px;"><font style="font-weight: bold;">' + message1 + '</font></p>' +
+//                            '<p class="text-left mb-0">' + feedbackMessage + '<font style="color: darkblue; font-style: italic;">' + emailMessage + '</font></p>';
+//                    var dialog = bootbox.alert({
+//                        message: messageHeader + messageBody,
+//                        closeButton: false,
+//                        centerVertical: true,
+//                        className: "modal-alerting rubberBand animated ",
+//                    });
+//                }, 1000)
+//            }
+
+            var leftPane = document.getElementById('left-pane');
+            var rightPane = document.getElementById('map');
+            var paneSep = document.getElementById('panes-separator');
+
+            // The script below constrains the target to move horizontally between a left and a right virtual boundaries.
+            // - the left limit is positioned at 10% of the screen width
+            // - the right limit is positioned at 90% of the screen width
+            var leftLimit = 25;
+            var rightLimit = 40;
+
+
+            paneSep.sdrag(function (el, pageX, startX, pageY, startY, fix) {
+
+                fix.skipX = true;
+
+                if (pageX < window.innerWidth * leftLimit / 100) {
+                    pageX = window.innerWidth * leftLimit / 100;
+                    fix.pageX = pageX;
+                }
+                if (pageX > window.innerWidth * rightLimit / 100) {
+                    pageX = window.innerWidth * rightLimit / 100;
+                    fix.pageX = pageX;
+                }
+                var cur = pageX / window.innerWidth * 100;
+                if (cur < 0) {
+                    cur = 0;
+                }
+                if (cur > window.innerWidth) {
+                    cur = window.innerWidth;
+                }
+                var right = (100 - cur - 2);
+                leftPane.style.width = cur + '%';
+                rightPane.style.width = right + '%';
+
+            }, null, 'horizontal');
+
+            function loadPage(str) {
+                displayPage = str;
+                $("#ts_box").hide();
+                document.getElementById("left-pane").style.width = "25%";
+
+                try {
+                    closeOpenProdNav();
+                    closeProdNav();
+                    closePiNav();
+                } catch (err) {
+                }
+
+                //document.getElementById("left-pane").style.width = "400px";
+                //alert("str : " + str);        
+                //removeAllExtentsFromMap();
+
+                if (str === "da") {
+                    $("#daDiv").show();
+                    $("#odapDiv").hide();
+                    $("#svDiv").hide();
+                    $("#piActionsDiv").hide();
+                    $("#osvDiv").hide();
+                    $("#nosDiv").hide();
+                    $("#apaDiv").hide();
+                    $("#ssDiv").hide();
+                    loginType = "DA";
+                    getAVConfig();
+                    //getDataAvCaller();
+                    try {
+                        removeAllExtentsFromMap();
+                        collapseAllMergedResults();
+                    } catch (err) {
+                    }
+                    try {
+                        disableDrawControl();
+                    } catch (err) {
+                    }
+                } else if (str === "search") {
+
+                    $("#daDiv").hide();
+                    $("#odapDiv").show();
+                    $("#svDiv").hide();
+                    $("#ts_box").show();
+                    $("#piActionsDiv").hide();
+                    $("#osvDiv").hide();
+                    $("#nosDiv").hide();
+                    $("#apaDiv").hide();
+                    $("#ssDiv").hide();
+                    loginType = "SEARCH";
+                    if (operational !== "1") {
+                        $("#targetPanelParent").css("display", "block");
+                    } else {
+                        $("#targetPanelParent").css("display", "none");
+                    }
+                    try {
+                        if (localStorage.hasOwnProperty("userId"))
+                            globalUserId = localStorage.getItem("userId");
+                        checkLogin();
+                        if (globalUserId === "")
+                        {
+                            cartdt.clear();
+                            cartdt.draw();
+                        }
+                        removeAllExtentsFromMap();
+                        if ($("#resultTab").hasClass("in active")) {
+                            callResult();
+                            loginType = "RESULTS";
+                        }
+                        if ($("#cartTab").hasClass("in active"))
+                            callLoginForCart();
+
+                    } catch (err) {
+                    }
+                    try {
+                        enableDrawControl();
+                    } catch (err) {
+                    }
+
+
+                } else if (str === "pi") {
+                    if (localStorage.hasOwnProperty("userId"))
+                        globalUserId = localStorage.getItem("userId");
+                    checkLogin();
+                    loginType = "PIACTIONS";
+                    if (globalUserId === "") {
+                        callLogin("PIACTIONS");
+                    } else if (!globalUserId.startsWith("ONL_") && !globalUserId.startsWith("OFF_")) {
+                        bhoofailure("You are not authorised for the operation. Please login as Offline/Proxy User!");
+                        return;
+                    } else {
+                        onLoadPIOperations();
+                    }
+//                    document.getElementById("left-pane").style.width = "40%";
+//                    $("#left-pane").removeClass("col-sm-5");
+//                    $("#left-pane").removeClass("col-md-4");
+//                    $("#left-pane").removeClass("col-lg-4");
+//                    $("#left-pane").addClass("col-sm-8");
+//                    $("#left-pane").addClass("col-md-8");
+//                    $("#left-pane").addClass("col-lg-8");
+//                    alert("Added");
+
+                    $("#daDiv").hide();
+                    $("#odapDiv").hide();
+                    $("#svDiv").hide();
+                    $("#ts_box").hide();
+                    $("#piActionsDiv").show();
+                    $("#osvDiv").hide();
+                    $("#nosDiv").hide();
+                    $("#apaDiv").hide();
+                    $("#ssDiv").hide();
+                    try {
+//                        if (globalUserId === "")
+//                        {
+//                            cartdt.clear();
+//                            cartdt.draw();
+//                        }
+                        removeAllExtentsFromMap();
+                        collapseAllMergedResults();
+                    } catch (err) {
+                    }
+                    try {
+//                        enableDrawControl();
+                    } catch (err) {
+                    }
+
+
+                } else if (str === "sidView") {
+                    $("#daDiv").hide();
+                    $("#odapDiv").hide();
+                    $("#svDiv").show();
+                    $("#piActionsDiv").hide();
+                    $("#osvDiv").hide();
+                    $("#nosDiv").hide();
+                    $("#apaDiv").hide();
+                    $("#ssDiv").hide();
+                    $("#sid_search").show();
+                    $("#sid_res").hide();
+                    $("#SidSelect").hide();
+                    loginType = "SID";
+                    try {
+                        removeAllExtentsFromMap();
+                        collapseAllMergedResults();
+                        resetZoom();
+                    } catch (err) {
+                        console.log(err);
+                    }
+                    try {
+                        disableDrawControl();
+                    } catch (err) {
+                        console.log(err);
+                    }
+                } else if (str === "osvView") {
+                    $("#daDiv").hide();
+                    $("#odapDiv").hide();
+                    $("#svDiv").hide();
+                    $("#piActionsDiv").hide();
+                    $("#osvDiv").show();
+                    $("#nosDiv").hide();
+                    $("#apaDiv").hide();
+                    $("#ssDiv").hide();
+                    loginType = "OS";
+                    try {
+                        removeAllExtentsFromMap();
+                        collapseAllMergedResults();
+                        resetZoom();
+                    } catch (err) {
+                        console.log(err);
+                    }
+                    try {
+                        disableDrawControl();
+                    } catch (err) {
+                        console.log(err);
+                    }
+                } else if (str === "nosView") {
+                    $("#daDiv").hide();
+                    $("#odapDiv").hide();
+                    $("#svDiv").hide();
+                    $("#piActionsDiv").hide();
+                    $("#osvDiv").hide();
+                    $("#nosDiv").show();
+                    $("#apaDiv").hide();
+                    $("#ssDiv").hide();
+                    try {
+                        removeAllExtentsFromMap();
+                        collapseAllMergedResults();
+                        resetZoom();
+                    } catch (err) {
+                        console.log(err);
+                    }
+                    try {
+                        disableDrawControl();
+                    } catch (err) {
+                        console.log(err);
+                    }
+                } else if (str === "ssView") {
+                    $("#daDiv").hide();
+                    $("#odapDiv").hide();
+                    $("#svDiv").hide();
+                    $("#piActionsDiv").hide();
+                    $("#osvDiv").hide();
+                    $("#nosDiv").hide();
+                    $("#apaDiv").hide();
+                    $("#ssDiv").show();
+                    loginType = "SS";
+                    try {
+                        removeAllExtentsFromMap();
+                        collapseAllMergedResults();
+                        resetZoom();
+                        getSsSIDs();
+                    } catch (err) {
+                        console.log(err);
+                    }
+                    try {
+                        disableDrawControl();
+                    } catch (err) {
+                        console.log(err);
+                    }
+                } else if (str === "apaView") {
+                    $("#daDiv").hide();
+                    $("#odapDiv").hide();
+                    $("#svDiv").hide();
+                    $("#piActionsDiv").hide();
+                    $("#osvDiv").hide();
+                    $("#nosDiv").hide();
+                    $("#apaDiv").show();
+                    $("#ssDiv").hide();
+                    loginType = "APA";
+                    try {
+                        removeAllExtentsFromMap();
+                        collapseAllMergedResults();
+                        resetZoom();
+                    } catch (err) {
+                        console.log(err);
+                    }
+                    try {
+                        disableDrawControl();
+                    } catch (err) {
+                        console.log(err);
+                    }
+                }
+            }
+
+
+            function publishImageOnMap(selRowValue, index) {
+                //alert("publish image on map");
+            }
+            function removeImagefromMap(selRowValue, index) {
+                //alert("remove image on map");
+                removePublishedImageFromMap();
+            }
+
+            ////webresources/productSearchServiceData
+
+            var userId = "";
+            var userLogin = false;
+            var is01user = false;
+
+            // When the user clicks anywhere outside of the modal, close it
+            function callLogin(type)
+            {
+                if (!checkLogin()) {
+                    loginType = type;
+                    localStorage.setItem("loginType", loginType);
+                    window.open("login.html");
+                    //                window.location.href = "login.html";
+                    //                loginModal.style.display = "block";
+                }
+            }
+
+//            var loginModal = document.getElementById('loginFormId');
+            var feedModal = document.getElementById('feedBackModal');
+            var aboutUsModal = document.getElementById('AboutUs');
+            var tcModal = document.getElementById('TnC');
+            var dcModal = document.getElementById('dc');
+            var dmModal = document.getElementById('depMgrModal');
+            var span1 = document.getElementsByClassName("close1")[0];
+            var abtSpan = document.getElementById("abtus");
+            var tcSpan = document.getElementById("tc");
+            var dcSpan = document.getElementById("dcc");
+
+            window.onclick = function (event) {
+                if (event.target === aboutUsModal) {
+                    aboutUsModal.style.display = "none";
+                }
+                if (event.target === tcModal) {
+                    tcModal.style.display = "none";
+                }
+                if (event.target === dcModal) {
+                    dcModal.style.display = "none";
+                }
+                if (event.target === feedModal) {
+                    feedModal.style.display = "none";
+                }
+//                if (event.target === loginFormId && (userId !== null || userId !== "")) {
+//                    loginFormId.style.display = "none";
+//                }
+                if (event.target === dmModal) {
+                    dmModal.style.display = "none";
+                }
+            }
+
+            function downloadBatchTool() {
+                if (batchDownPath === "" || batchDownPath === null) {
+                    window.open("https://bhoonidhi.nrsc.gov.in/imgarchive/BatchDownloader/ExternalJar/BhoonidhiBatchDownloader.jar", '_blank');
+                } else {
+                    window.open(batchDownPath, '_blank');
+                }
+            }
+
+            function callAboutUs()
+            {
+                aboutUsModal.style.display = "block";
+            }
+
+            function callTC()
+            {
+                tcModal.style.display = "block";
+            }
+
+            function callDC()
+            {
+                dcModal.style.display = "block";
+            }
+
+            var span = document.getElementsByClassName("close")[0];
+//            var span2 = document.getElementsByClassName("closef")[0];
+//            span2.onclick = function () {
+//                feedModal.style.display = "none";
+//            }
+            var span = document.getElementsByClassName("close")[0];
+
+
+            abtSpan.onclick = function () {
+                aboutUsModal.style.display = "none";
+            }
+
+            tcSpan.onclick = function () {
+                tcModal.style.display = "none";
+            }
+
+            dcSpan.onclick = function () {
+                dcModal.style.display = "none";
+            }
+
+//            $('#LoginForm').keydown(function (e) {
+//                var key = e.which;
+//                if (key == 13) {
+//                    //    alert("Call Login");
+//                    validateLogin(LoginForm);
+//                    //return false;
+//                }
+//            });
+        </script>
+    </body>
+</html>

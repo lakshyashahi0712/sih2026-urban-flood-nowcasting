@@ -1,0 +1,176 @@
+STATUS: 200
+FINAL-URL: https://bhuvan.nrsc.gov.in/wiki/index.php/List_of_Vector_(Thematic_Maps)_datasets
+CONTENT-TYPE: text/html; charset=UTF-8
+============================================================
+ 
+ Click here for Bhuvan- Geo-portal Home page 
+ Log in 
+ Main navigation 
+ Global actions 
+ User 
+ Log in 
+ Wiki 
+ Special pages 
+ Quick Guide
+ Home 
+ Register to Bhuvan 
+ Free Satellite datasets 
+ Vector /Thematic Maps 
+ Terrestrial Sciences Products 
+ Ocean Sciences Products 
+ Atmospheric Sciences Products 
+ Cryospheric Products 
+ Create Shapefile 
+ See what&#039;s nearby 
+ View Satellite data 
+ Download Satellite data 
+ Create Color Composite in GIS 
+ Map your city 
+ Utilize Web Map Services 
+ Tag locations 
+ Choropleth Map creator 
+ Track Your Vehicle 
+ Video Tutorials 
+ Privacy policy About Bhuvan Wiki Disclaimers 
+ Global actions
+ All templates 
+ Extended statistics 
+ Upload file 
+ Watchlist 
+ List of Vector (Thematic Maps) datasets
+ Last edited 4 years ago by Bhuvan Admin 
+ S.No.
+ Theme
+ Scale
+ Availability
+ Features
+ Webservices (WMS/WMTS) URL's
+ Datasets/Products/Reports Available
+ 1
+ Land Use Land Cover
+ 1:50000
+ 2005-06
+ Metadata, Analaysis, Statistics
+ WMTS: " https://bhuvan-vec2.nrsc.gov.in/bhuvan/gwc/service/wmts " WMS: " https://bhuvan-vec2.nrsc.gov.in/bhuvan/wms "
+ Map 
+ 2
+ Land Use Land Cover
+ 1:50000
+ 2011-12
+ Metadata, Analysis, Statistics
+ WMTS: " https://bhuvan-vec2.nrsc.gov.in/bhuvan/gwc/service/wmts "WMS: " https://bhuvan-vec2.nrsc.gov.in/bhuvan/wms "
+ Map 
+ 3
+ Land Use Land Cover
+ 1:50000
+ 2015-16
+ Metadata, Analysis, Statistics
+ WMTS: " https://bhuvan-vec2.nrsc.gov.in/bhuvan/gwc/service/wmts "WMS: " https://bhuvan-vec2.nrsc.gov.in/bhuvan/wms "
+ Map 
+ 4
+ Land Use Land Cover
+ 1:250000
+ 2004-05, 2005-06, ..., 2018-19
+ Metadata, Statistics
+ WMS: " https://bhuvan-ras2.nrsc.gov.in/cgi-bin/LULC250K.exe " Data for Download
+ Map 
+ 5
+ Land Use Land Cover: SIS-DP
+ 1:10000
+ 637 Districts
+ Visualization
+ -
+ 6
+ Land Degradation
+ 1:50000
+ 2005 - 2006
+ Metadata, Statistics
+ WMTS: " https://bhuvan-vec2.nrsc.gov.in/bhuvan/gwc/service/wmts "WMS: " https://bhuvan-vec2.nrsc.gov.in/bhuvan/wms "
+ Map 
+ 7
+ Land Degradation
+ 1:50000
+ 2015 - 2016
+ Metadata, Statistics
+ WMTS: " https://bhuvan-vec2.nrsc.gov.in/bhuvan/gwc/service/wmts "WMS: " https://bhuvan-vec2.nrsc.gov.in/bhuvan/wms "
+ Map 
+ 8
+ Urban Land Use: NUIS
+ 1:10000
+ 2006-07
+ Metadata
+ WMTS: " https://bhuvan-vec1.nrsc.gov.in/bhuvan/nuis/gwc/service/wmts " WMS: " https://bhuvan-vec1.nrsc.gov.in/bhuvan/nuis/wms "
+ Map 
+ 9
+ Wasteland
+ 1:50000
+ 2008-09
+ Statistics, Analysis, Query Shell, Metadata
+ WMTS: " https://bhuvan-vec2.nrsc.gov.in/bhuvan/gwc/service/wmts "WMS: " https://bhuvan-vec2.nrsc.gov.in/bhuvan/wms "
+ Map 
+ 10
+ Wasteland
+ 1:50000
+ 2015-16
+ Statistics, Analysis, Query Shell, Metadata
+ WMTS: " https://bhuvan-vec2.nrsc.gov.in/bhuvan/gwc/service/wmts "WMS: " https://bhuvan-vec2.nrsc.gov.in/bhuvan/wms "
+ Map 
+ 11
+ Glacial Lakes/Waterbodies
+ 1:250000
+ Indian Himalayas
+ Metadata
+ WMTS: " https://bhuvan-vec2.nrsc.gov.in/bhuvan/gwc/service/wmts "WMS: " https://bhuvan-vec2.nrsc.gov.in/bhuvan/wms "
+ Map 
+ 12
+ Geomorphology
+ 1:50000
+ 2005-06
+ Metadata
+ WMTS: " https://bhuvan-vec2.nrsc.gov.in/bhuvan/gwc/service/wmts " WMS: " https://bhuvan-vec2.nrsc.gov.in/bhuvan/wms "
+ Map 
+ 13
+ Lineament
+ 1:50000
+ Metadata
+ WMTS: " https://bhuvan-vec2.nrsc.gov.in/bhuvan/gwc/service/wmts " WMS: " https://bhuvan-vec2.nrsc.gov.in/bhuvan/wms "
+ Map 
+ 14
+ Flood Hazard
+ 1:250000
+ Derived from data aquired during floods: 1998-2007
+ Statistics, Analysis, Metadata
+ WMS: " https://bhuvan ras2.nrsc.gov.in/cgi-bin/hazard.exe"
+ Map 
+ 15
+ Flood Annual Layers
+ 1:250000
+ 1999 - 2010
+ Metadata
+ WMS: " https://bhuvan-ras2.nrsc.gov.in/cgi-bin/flood.exe "
+ Map 
+Retrieved from " https://bhuvan.nrsc.gov.in/wiki/index.php?title=List_of_Vector_(Thematic_Maps)_datasets&oldid=380 "
+ Privacy policy 
+ About Bhuvan Wiki 
+ Disclaimers 
+ Tools 
+ Quality management 
+ Manage page 
+ Associated links 
+ History 
+ Export 
+ HTML single page (archived) 
+ Print 
+ Toolbox 
+ What links here 
+ Related changes 
+ Permanent link 
+ Page information 
+ Cite this page 
+ Mode 
+ View 
+ View source 
+ History 
+ Page information 
+ Page assignments 
+ 

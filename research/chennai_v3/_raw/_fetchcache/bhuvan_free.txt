@@ -1,0 +1,116 @@
+STATUS: 200
+FINAL-URL: https://bhuvan.nrsc.gov.in/wiki/index.php/List_of_free_satellite_data_products
+CONTENT-TYPE: text/html; charset=UTF-8
+============================================================
+ 
+ Click here for Bhuvan- Geo-portal Home page 
+ Log in 
+ Main navigation 
+ Global actions 
+ User 
+ Log in 
+ Wiki 
+ Special pages 
+ Quick Guide
+ Home 
+ Register to Bhuvan 
+ Free Satellite datasets 
+ Vector /Thematic Maps 
+ Terrestrial Sciences Products 
+ Ocean Sciences Products 
+ Atmospheric Sciences Products 
+ Cryospheric Products 
+ Create Shapefile 
+ See what&#039;s nearby 
+ View Satellite data 
+ Download Satellite data 
+ Create Color Composite in GIS 
+ Map your city 
+ Utilize Web Map Services 
+ Tag locations 
+ Choropleth Map creator 
+ Track Your Vehicle 
+ Video Tutorials 
+ Privacy policy About Bhuvan Wiki Disclaimers 
+ Global actions
+ All templates 
+ Extended statistics 
+ Upload file 
+ Watchlist 
+ List of free satellite data products
+ Last edited 4 years ago by Bhuvan Admin 
+ S.No.
+ Product
+ Resolution
+ Data Availability
+ Frequency
+ Coverage
+ Tile Extent/Spatial Extent &#160;!! File Size/
+Download (approx.)
+ 1
+ Cartosat-1:DEM - Version-1
+ 1 arc Sec (~ 32 m)
+ 2006-2008 Single
+ India: 1°X1°
+ 8 - 11MB
+ 1
+ Cartosat-1:DEM - Version 1.1R1
+ 1 arc Sec (~ 32 m)
+ 2008-2012
+ Single India: 1°X1°
+ 8 - 11MB
+ 3
+ Cartosat-1:DEM - Version-2R1
+ 1 arc Sec (~ 32 m)
+ 2005-2014
+ Single India: 1°X1°
+ 8 - 16MB
+ 4
+ Cartosat-1:DEM - Version-3R1
+ 1 arc Sec (~ 32 m)
+ 2005-2014
+ Single India: 1°X1°
+ 8 - 16MB
+ 5
+ IMS-1:Hyper spectral Imager
+ Spectral Binned Data (17 bands)
+ 2011-2012 Single
+ India: Scene Based
+ 2 - 3MB
+ 6
+ Resourcesat-1/Resourcesat-2:AWiFS Ortho
+ 56 m
+ Dec-2009 May-2019 3 times/year (9 times/year - 2016 onwards)
+ India: 1°X1°
+ 16 - 18MB
+ 7
+ Resourcesat-1/Resourcesat-2:LISS III Ortho
+ 24 m
+ Oct-2009 May-2019
+ 2 times/year India: 15'X15'
+ 2 - 3MB
+Retrieved from " https://bhuvan.nrsc.gov.in/wiki/index.php?title=List_of_free_satellite_data_products&oldid=379 "
+ Privacy policy 
+ About Bhuvan Wiki 
+ Disclaimers 
+ Tools 
+ Quality management 
+ Manage page 
+ Associated links 
+ History 
+ Export 
+ HTML single page (archived) 
+ Print 
+ Toolbox 
+ What links here 
+ Related changes 
+ Permanent link 
+ Page information 
+ Cite this page 
+ Mode 
+ View 
+ View source 
+ History 
+ Page information 
+ Page assignments 
+ 

@@ -1,0 +1,47 @@
+Phase 2A Interface Analysis: SubcatchmentHydrograph to FROZEN Phase 1A Digital-Twin Mapping
+
+Analysis of what information in SubcatchmentHydrograph can be represented by the FROZEN Phase 1A Digital-Twin contracts.
+
+Hydrology field | DT target | Justification | Provenance | Decision
+----------------|-----------|---------------|------------|---------
+subcatchment_id | Catchment.id | Direct identifier mapping | DERIVED | SAFE
+drainage_area_km2 | Catchment.area_km2 | Direct value mapping (same units) | DERIVED | SAFE
+zone_id | None | No equivalent in Catchment (zone_id is for lateral inflow zones) | N/A | MUST NOT MAP
+peak_discharge_m3_s | None | Not a catchment property; BoundaryCondition lacks time series capacity | N/A | MUST NOT MAP
+time_to_peak_minutes | None | Temporal characteristic not stored in DT contracts | N/A | MUST NOT MAP
+total_volume_m3 | None | Volumetric characteristic not stored in DT contracts | N/A | MUST NOT MAP
+hydrograph | None | Time series discharge; BoundaryCondition has no time series in FROZEN model | N/A | MUST NOT MAP
+
+DrainageReach: NONE
+- SubcatchmentHydrograph contains no geometric properties (length, slope, width, depth) that define a drainage reach
+- No justified mapping exists without inventing semantics
+
+HydraulicParameters: NONE
+- SubcatchmentHydrograph contains no hydraulic parameters (Manning's n, etc.)
+- These are inputs to runoff transformation, not outputs
+
+RainfallEvent: NONE
+- SubcatchmentHydrograph is runoff output, not rainfall input
+- No semantic connection exists
+
+BoundaryCondition: NONE
+- While SubcatchmentHydrograph contains discharge information, FROZEN BoundaryCondition lacks time series capacity
+- Mapping peak_discharge_m3_s would invent semantics (representing time series as single value)
+- Mapping would lose critical temporal dynamics of hydrograph
+
+1. Safe Phase-2A mapping:
+   - SubcatchmentHydrograph.subcatchment_id → Catchment.id (Provenance: DERIVED)
+   - SubcatchmentHydrograph.drainage_area_km2 → Catchment.area_km2 (Provenance: DERIVED)
+
+2. Fields that must remain outside the DT contract:
+   - All other SubcatchmentHydrograph fields (zone_id, peak_discharge_m3_s, time_to_peak_minutes, total_volume_m3, hydrograph)
+   - Attempting to map these would invent semantics or require modifying FROZEN contracts
+
+3. Whether an adapter is actually justified:
+   - YES, but only for the safe mappings above
+   - An adapter could convert SubcatchmentHydrograph to Catchment objects for the two mappable fields
+   - The adapter would NOT attempt to map unmappable fields (would leave them unset or handle separately)
+   - Full hydrograph representation requires either:
+     a) Extending BoundaryCondition with time series capacity (not allowed - would modify FROZEN)
+     b) Creating a new Digital-Twin model (not allowed per constraints)
+     c) Using BoundaryCondition for peak values only (lossy, invents semantics)

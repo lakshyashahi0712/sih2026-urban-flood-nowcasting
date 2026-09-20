@@ -1,0 +1,7 @@
+STATUS: 200
+FINAL-URL: https://registry.opendata.aws/esa-worldcover/
+CONTENT-TYPE: text/html
+============================================================
+ 
+ Registry of Open Data on AWS 
+ Please follow this link .

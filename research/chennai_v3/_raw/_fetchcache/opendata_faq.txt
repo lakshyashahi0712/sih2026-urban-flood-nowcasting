@@ -1,0 +1,51 @@
+STATUS: 200
+FINAL-URL: https://bhoonidhi.nrsc.gov.in/bhoonidhi/htmls/OpenDataFAQ.html
+CONTENT-TYPE: text/html
+============================================================
+
+ Which products are in Open Data?
+ Satellite Data coarser than 5 m and above resolution is Open.
+ All open data is available as either Direct download where we have readily available products for download or on order where the products are generated on demand basis and disseminated through ftp. 
+ Which products are in OpenData_DirectDownload?
+ All archived Standard products and geo physical products for last 3 months are available for instant download, the products older than 3 months are available for delayed download. The availability of products from delayed download will be intimated to the registered users through email. Users are advised to check the spam/junk folders.
+ How many products can be downloaded at a time? 
+ On a given day a user can download 100 products, at a time only 5 products can be downloaded concurrently.
+ Is orthorectified products available for free?
+ For sensors with spatial resolution coarser than 5mtrs, orthorectified products are available free of cost.
+ Which satellite imagery is available free and open to users?
+ The following satellites are available as free and open to users
+ EOS-04 (CRS, MRS)
+ EOS-06
+ IRS-1A
+ IRS-1B
+ IRS-1C
+ IRS-1D
+ JPSS1
+ LandSat-8
+ LandSat-9
+ NOAA-11
+ NOAA-12
+ NOAA-14
+ NOAA-16
+ NOAA-17
+ NOAA-18
+ NOAA-19
+ NovaSAR-1 (AIS)
+ OceanSat-1
+ OceanSat-2
+ RISAT-1 (CRS, MRS)
+ Resourcesat-1
+ Resourcesat-2
+ Resourcesat-2A
+ ScatSat-1
+ Sentinel-1A
+ Sentinel-1B
+ Sentinel-2A
+ Sentinel-2B
+ Soumi-NPP
+ Terra
+ NISAR (coming soon..)
+ What are the spatial resolutions ? 
+ The data in Bhoonidhi is from 0.28 m to 1 km based on the sensors.
+ Are there known product quality issues?
+ In case there is an issue identified in the quality of the products available to the users, a quality disclaimer is available for user information. The quality disclaimer documents the affected products and the quality impact.

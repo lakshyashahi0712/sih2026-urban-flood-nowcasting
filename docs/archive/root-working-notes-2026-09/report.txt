@@ -1,0 +1,21 @@
+1. Exact files changed:
+   - backend/app/domain/delhi/digital_twin/historical_flood_event_assembly.py
+
+2. Exact reason each changed file was changed:
+   - To replace the hardcoded invalid_timestamp: 0 with a calculation that counts observations with timestamp set to None, while documenting that the model guarantees a timestamp making this count always zero.
+
+3. What changed in invalid_timestamp QA:
+   - Changed from hardcoded 0 to: invalid_timestamp_count = sum(1 for obs in self.observations if obs.timestamp is None)
+   - Added explanatory comment that timestamp is guaranteed by the model.
+
+4. Whether the model allows missing/invalid timestamps:
+   - No. The HistoricalFloodObservation model defines timestamp as a required datetime field (not Optional), so invalid/missing timestamps cannot be represented.
+
+5. Focused test result:
+   - All existing tests pass (7 passed). No new test added because the model invariant prevents invalid timestamps, and the existing test suite already validates the assembly behavior with valid timestamps.
+
+6. Confirmation that Phase 4B was untouched:
+   - No changes were made to backend/app/domain/delhi/digital_twin/ingestion/historical_flood_ingestor.py (verified via git status showing no modifications to that file).
+
+7. Any intentionally unimplemented behavior:
+   - No validation for invalid timestamps was added because the model structurally prevents them; the metric remains zero as a consequence of the model invariant.
