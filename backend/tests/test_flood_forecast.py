@@ -2,6 +2,8 @@
 from __future__ import annotations
 
 import pytest
+from unittest.mock import Mock, patch
+import httpx
 from fastapi.testclient import TestClient
 
 from backend.main import app
@@ -141,3 +143,91 @@ def test_flood_forecast_get_endpoint():
             assert h["geojson"]["type"] == "FeatureCollection"
     else:
         assert response.status_code == 503
+
+
+def test_flood_forecast_get_endpoint_under_429_returns_stale():
+    """Verify GET /flood/forecast returns HTTP 200 with status STALE when Open-Meteo returns HTTP 429."""
+    mock_resp = Mock()
+    mock_resp.status_code = 429
+    mock_resp.text = '{"error": true, "reason": "Daily rate limit exceeded"}'
+
+    with patch.object(httpx.AsyncClient, "get", return_value=mock_resp):
+        response = client.get("/flood/forecast?use_cache=true")
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["status"] == "STALE"
+    assert data["provenance"]["rainfall"] == "FALLBACK_CACHED_FORECAST"
+    assert len(data["horizons"]) == 4
+    labels = [h["horizon"] for h in data["horizons"]]
+    assert labels == ["NOW", "+1h", "+2h", "+3h"]
+    for h in data["horizons"]:
+        assert h["timestep_hours"] == 1.0
+        assert "geojson" in h
+        assert h["geojson"]["type"] == "FeatureCollection"
+
+
+def test_flood_forecast_get_endpoint_under_429_use_cache_false_returns_503():
+    """Verify GET /flood/forecast returns HTTP 503 when Open-Meteo returns 429 and use_cache=False."""
+    mock_resp = Mock()
+    mock_resp.status_code = 429
+    mock_resp.text = '{"error": true, "reason": "Daily rate limit exceeded"}'
+
+    with patch.object(httpx.AsyncClient, "get", return_value=mock_resp):
+        response = client.get("/flood/forecast?use_cache=false")
+
+    assert response.status_code == 503
+
+
+def test_flood_streets_under_429_returns_200():
+    """Verify GET /flood/streets succeeds when Open-Meteo is rate-limited (HTTP 429)."""
+    mock_resp = Mock()
+    mock_resp.status_code = 429
+    mock_resp.text = '{"error": true, "reason": "Daily rate limit exceeded"}'
+
+    with patch.object(httpx.AsyncClient, "get", return_value=mock_resp):
+        response = client.get("/flood/streets?horizon=+1h&use_cache=true")
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["horizon"] == "+1h"
+    assert "summary" in data
+
+
+def test_flood_streets_forecast_under_429_returns_stale():
+    """Verify GET /flood/streets/forecast returns status STALE when Open-Meteo returns HTTP 429."""
+    mock_resp = Mock()
+    mock_resp.status_code = 429
+    mock_resp.text = '{"error": true, "reason": "Daily rate limit exceeded"}'
+
+    with patch.object(httpx.AsyncClient, "get", return_value=mock_resp):
+        response = client.get("/flood/streets/forecast?use_cache=true")
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["status"] == "STALE"
+    assert len(data["horizons"]) == 4
+
+
+def test_safe_route_under_429_returns_200():
+    """Verify GET /routing/safe-route returns HTTP 200 when Open-Meteo is rate-limited (HTTP 429)."""
+    mock_resp = Mock()
+    mock_resp.status_code = 429
+    mock_resp.text = '{"error": true, "reason": "Daily rate limit exceeded"}'
+
+    with patch.object(httpx.AsyncClient, "get", return_value=mock_resp):
+        response = client.get(
+            "/routing/safe-route",
+            params={
+                "start_lon": 72.8945,
+                "start_lat": 19.0541,
+                "end_lon": 72.9000,
+                "end_lat": 19.0650,
+                "horizon": "+1h",
+            },
+        )
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["status"] in ["SAFE", "CAUTION", "UNAVAILABLE"]
+    assert "total_distance_m" in data

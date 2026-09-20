@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone, timedelta
+import json
+from pathlib import Path
 from typing import Optional
 from zoneinfo import ZoneInfo
 
@@ -18,7 +20,7 @@ try:
         RainfallAdapterEmptyForecast,
         RainfallAdapterInvalidTimestamp,
     )
-    from app.domain.rainfall.models import RainfallRecord, RainfallSeries, RainfallStatus, SourceType
+    from app.domain.rainfall.models import RainfallRecord, RainfallSeries, RainfallStatus, RainfallProvenance, SourceType
 except ImportError:
     from backend.app.domain.rainfall.exceptions import (
         RainfallAdapterTimeout,
@@ -30,7 +32,7 @@ except ImportError:
         RainfallAdapterEmptyForecast,
         RainfallAdapterInvalidTimestamp,
     )
-    from backend.app.domain.rainfall.models import RainfallRecord, RainfallSeries, RainfallStatus, SourceType
+    from backend.app.domain.rainfall.models import RainfallRecord, RainfallSeries, RainfallStatus, RainfallProvenance, SourceType
 
 
 # Constants
@@ -40,39 +42,124 @@ MUMBAI_LON = 72.85291
 FORECAST_DAYS = 2  # Assuming default forecast days, adjust if needed
 DEFAULT_TIMEOUT = 10.0
 CACHE_TTL_MINUTES = 30
+DEFAULT_FALLBACK_PATH = Path(__file__).resolve().parents[2] / "data" / "rainfall" / "mumbai_open_meteo_cached.json"
 
 
 class OpenMeteoCache:
-    """Simple in-memory cache for Open-Meteo responses."""
+    """In-memory cache with bundled verified snapshot fallback for Open-Meteo responses."""
 
-    def __init__(self) -> None:
+    def __init__(self, fallback_path: Optional[Path | str] = DEFAULT_FALLBACK_PATH) -> None:
         self._data: Optional[RainfallSeries] = None
         self._timestamp: Optional[datetime] = None
+        self._fallback: Optional[RainfallSeries] = None
+        self.fallback_path: Optional[Path] = Path(fallback_path) if fallback_path else None
+        if self.fallback_path and self.fallback_path.exists():
+            self._fallback = self._load_fallback_from_file(self.fallback_path)
+
+    @property
+    def has_fallback(self) -> bool:
+        """Whether a verified fallback snapshot is loaded."""
+        return self._fallback is not None
+
+    def _load_fallback_from_file(self, file_path: Path) -> Optional[RainfallSeries]:
+        try:
+            with open(file_path, "r", encoding="utf-8") as f:
+                data = json.load(f)
+            return self._parse_fallback_data(data)
+        except Exception:
+            return None
+
+    def _parse_fallback_data(self, data: dict) -> RainfallSeries:
+        required_fields = ["hourly", "hourly_units", "timezone"]
+        for field in required_fields:
+            if field not in data:
+                raise RainfallAdapterMissingField(field)
+
+        if data["timezone"] != MUMBAI_TZ:
+            raise RainfallAdapterTimezoneMismatch(data["timezone"], MUMBAI_TZ)
+
+        units = data["hourly_units"]
+        if units.get("precipitation") != "mm":
+            raise RainfallAdapterUnitMismatch(units.get("precipitation", "unknown"))
+
+        hourly = data["hourly"]
+        times = hourly.get("time", [])
+        precipitation = hourly.get("precipitation", [])
+        if not times or not precipitation or len(times) != len(precipitation):
+            raise RainfallAdapterEmptyForecast()
+
+        kolkata_tz = ZoneInfo(MUMBAI_TZ)
+        records = []
+        first_local_dt = datetime.fromisoformat(times[0])
+        acquired_at = first_local_dt.replace(tzinfo=kolkata_tz).astimezone(timezone.utc)
+
+        for i, (time_str, rain_mm) in enumerate(zip(times, precipitation)):
+            local_dt = datetime.fromisoformat(time_str)
+            utc_dt = local_dt.replace(tzinfo=kolkata_tz).astimezone(timezone.utc)
+            interval_end = utc_dt + timedelta(hours=1)
+            record = RainfallRecord(
+                timestamp=utc_dt,
+                interval_end=interval_end,
+                rainfall_mm=float(rain_mm),
+                source="open-meteo",
+                source_type=SourceType.FORECAST,
+                resolution_minutes=60,
+                acquired_at=acquired_at,
+                forecast_lead_minutes=i * 60,
+                status=RainfallStatus.STALE,
+                provenance=getattr(RainfallProvenance, "FALLBACK_CACHED_FORECAST", RainfallProvenance.NWP_FALLBACK),
+            )
+            records.append(record)
+
+        return RainfallSeries(
+            records=records,
+            source="open-meteo",
+            acquired_at=acquired_at,
+            provenance=getattr(RainfallProvenance, "FALLBACK_CACHED_FORECAST", RainfallProvenance.NWP_FALLBACK),
+        )
 
     def set(self, data: RainfallSeries) -> None:
         """Cache the response data."""
         self._data = data
         self._timestamp = datetime.now(timezone.utc)
 
-    def get(self) -> Optional[RainfallSeries]:
-        """Retrieve cached data if available and not expired, otherwise None."""
-        if self._data is None or self._timestamp is None:
-            return None
+    def get(self, allow_stale: bool = False) -> Optional[RainfallSeries]:
+        """Retrieve cached data.
 
-        # Check if cache has expired
-        now = datetime.now(timezone.utc)
-        if now - self._timestamp > timedelta(minutes=CACHE_TTL_MINUTES):
-            return None
+        If allow_stale is False: Returns fresh in-memory live data if not expired (< 30 min).
+        If allow_stale is True: Returns in-memory data (even if expired) or the bundled fallback snapshot.
+        """
+        if not allow_stale:
+            if self._data is None or self._timestamp is None:
+                return None
 
-        return self._data
+            # Check if cache has expired
+            now = datetime.now(timezone.utc)
+            if now - self._timestamp > timedelta(minutes=CACHE_TTL_MINUTES):
+                return None
+
+            return self._data
+        else:
+            if self._data is not None:
+                return self._data
+            return self._fallback
+
+    def get_stale(self) -> Optional[RainfallSeries]:
+        """Retrieve stale cached data or fallback snapshot."""
+        return self.get(allow_stale=True)
 
 
 class OpenMeteoAdapter:
     """Adapter for fetching rainfall data from Open-Meteo API."""
 
-    def __init__(self, timeout: float = DEFAULT_TIMEOUT) -> None:
+    def __init__(
+        self,
+        timeout: float = DEFAULT_TIMEOUT,
+        fallback_path: Optional[Path | str] = DEFAULT_FALLBACK_PATH,
+        cache: Optional[OpenMeteoCache] = None,
+    ) -> None:
         self.timeout = timeout
-        self.cache = OpenMeteoCache()
+        self.cache = cache if cache is not None else OpenMeteoCache(fallback_path=fallback_path)
 
     async def fetch(self, use_cache: bool = False) -> RainfallSeries:
         """Fetch rainfall data from Open-Meteo API.
@@ -101,8 +188,8 @@ class OpenMeteoAdapter:
                 self.cache.set(live_data)
                 return live_data
             except Exception:
-                # Live failed, try to return cached data (if available)
-                cached = self.cache.get()
+                # Live failed, try to return cached data or bundled verified snapshot
+                cached = self.cache.get(allow_stale=True)
                 if cached is not None:
                     # Return cached data marked as STALE
                     return self._make_stale_series(cached)
@@ -227,10 +314,14 @@ class OpenMeteoAdapter:
         """Return a new series with the same data but status set to STALE."""
         new_records = []
         for record in series.records:
-            new_record = record.model_copy(update={"status": RainfallStatus.STALE})
+            new_record = record.model_copy(update={
+                "status": RainfallStatus.STALE,
+                "provenance": getattr(RainfallProvenance, "FALLBACK_CACHED_FORECAST", RainfallProvenance.NWP_FALLBACK),
+            })
             new_records.append(new_record)
         return RainfallSeries(
             records=new_records,
             source=series.source,
             acquired_at=series.acquired_at,
+            provenance=getattr(RainfallProvenance, "FALLBACK_CACHED_FORECAST", RainfallProvenance.NWP_FALLBACK),
         )
