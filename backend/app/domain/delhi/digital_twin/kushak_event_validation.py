@@ -84,8 +84,8 @@ class ValidationEvent:
     window_end: datetime
 
 
-# The two required events. Separate identities; observations are never
-# pooled across them.
+# Required events plus the partial-forcing event EV-03. Separate
+# identities; observations are never pooled across them.
 VALIDATION_EVENTS: Tuple[ValidationEvent, ...] = (
     ValidationEvent(
         event_id="EV-01",
@@ -99,9 +99,34 @@ VALIDATION_EVENTS: Tuple[ValidationEvent, ...] = (
         window_start=datetime(2023, 7, 8),
         window_end=datetime(2023, 7, 11),
     ),
+    ValidationEvent(
+        event_id="EV-03",
+        label="September 11, 2021 (partial forcing: documented "
+        "05:30-08:30 IST 3-hour block)",
+        window_start=datetime(2021, 9, 11),
+        window_end=datetime(2021, 9, 12),
+    ),
 )
 
 _EVENT_IDS = frozenset(e.event_id for e in VALIDATION_EVENTS)
+
+# Historical event ID mapping table bridging Phase 14A catalogue IDs (EVT-*)
+# to canonical validation IDs (EV-*). Preserves backward compatibility.
+EVENT_ID_MAP: Dict[str, str] = {
+    "EVT-2024-06-27": "EV-01",
+    "EVT-2023-07-08": "EV-02",
+    "EVT-2021-09-11": "EV-03",
+    "EV-01": "EV-01",
+    "EV-02": "EV-02",
+    "EV-03": "EV-03",
+}
+
+
+def resolve_event_id(event_id: Optional[str]) -> Optional[str]:
+    """Deterministically map historical event ID (EVT-*) or canonical EV-* to canonical event ID."""
+    if event_id is None:
+        return None
+    return EVENT_ID_MAP.get(event_id.strip(), event_id.strip())
 
 
 # ---------------------------------------------------------------------------
@@ -250,8 +275,11 @@ def validate_observation(
     - CWC / rainfall / external-extent observations are context or
       forcing evidence, never compared -> NOT_COMPARABLE.
     """
-    # 1. Event separation — mandatory explicit identity.
-    if event_id not in _EVENT_IDS:
+    # 1. Event separation — mandatory explicit identity; resolve bridge first.
+    resolved = resolve_event_id(event_id) if event_id is not None else None
+    # Preserve backward compatibility: original EV-* IDs remain recognized.
+    canonical_id = resolved if resolved in _EVENT_IDS else event_id
+    if canonical_id not in _EVENT_IDS:
         return ValidationRecord(
             event_id=event_id,
             source_class=source_class,

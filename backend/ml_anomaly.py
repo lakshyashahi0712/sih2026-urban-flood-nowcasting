@@ -13,7 +13,6 @@ unlabeled sensor streams.
 from datetime import datetime, timezone
 
 import numpy as np
-from sklearn.ensemble import IsolationForest
 
 # ---------------------------------------------------------------------------
 # Physical / regulatory thresholds. Values outside these are anomalies outright.
@@ -150,6 +149,8 @@ class AnomalyDetector:
             return
 
         X = np.array(matrix)
+        from sklearn.ensemble import IsolationForest
+
         self._model = IsolationForest(
             contamination=CONTAMINATION,
             n_estimators=100,

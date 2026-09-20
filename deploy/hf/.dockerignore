@@ -1,0 +1,9 @@
+# Never send these to the Space repo / docker build context
+node_modules/
+**/node_modules/
+backend/venv/
+**/__pycache__/
+.git/
+frontend/dist/
+*.log
+.pytest_cache/

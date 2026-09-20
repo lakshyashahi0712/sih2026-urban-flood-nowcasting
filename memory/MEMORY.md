@@ -1,0 +1,2 @@
+- [Kushak Data Acquisition Specification](kushak-data-acquisition-spec.md) — project
+- [Kushak Acquisition Initiation](kushak-acquisition-initiation.md) — project

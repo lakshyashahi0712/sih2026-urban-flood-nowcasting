@@ -1,0 +1,12 @@
+STATUS: 200
+FINAL-URL: https://bhoonidhi.nrsc.gov.in/bhoonidhi/htmls/FAQ2.html
+CONTENT-TYPE: text/html
+============================================================
+ 
+ Frequently Asked Questions?
+ Data Availability 
+ Priced Data 
+ Open Data 
+ User Registration 
+ Bhoonidhi Usage 
+ Future Tasking 

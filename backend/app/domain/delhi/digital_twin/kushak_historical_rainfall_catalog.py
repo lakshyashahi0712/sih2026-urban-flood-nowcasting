@@ -123,11 +123,63 @@ def get_ev02_safdarjung_profile() -> RainfallForcingProfile:
     )
 
 
+def get_ev03_safdarjung_profile() -> RainfallForcingProfile:
+    """PARTIAL forcing profile for EV-03 (September 11, 2021).
+
+    Only the documented, verified 3-hour cumulative block (80.0 mm,
+    05:30-08:30 IST, Safdarjung; event inventory EV-03) is executable,
+    at its NATIVE 3-hour interval — never split into hours. The
+    remainder of the 117.9 mm daily total has no documented intra-day
+    timing and stays UNKNOWN (never distributed, never zero-filled).
+    """
+    return RainfallForcingProfile(
+        event_id="EV-03",
+        forcing_id="FC-EV03-SAFDARJUNG",
+        forcing_type=ForcingType.HISTORICAL_EVENT,
+        bins=(
+            RainfallBin(
+                lead_hour=0,
+                amount=80.0,
+                quantity_type=RainfallQuantityType.DEPTH_MM,
+                units="mm",
+                provenance=RainfallProvenance.OBSERVED_DIRECT,
+                source_reference=(
+                    "Safdarjung IMD Station - verified 3-hour cumulative "
+                    "block 05:30-08:30 IST (80.0 mm; event inventory "
+                    "EV-03); documented 3-hour increment (not hourly split)"
+                ),
+            ),
+            RainfallBin(
+                lead_hour=1,
+                amount=None,
+                quantity_type=RainfallQuantityType.DEPTH_MM,
+                units="mm",
+                provenance=RainfallProvenance.UNKNOWN,
+                source_reference=(
+                    "Remainder of the 117.9 mm daily total (08:30-14:30 "
+                    "IST) has no documented intra-window timing; preserved "
+                    "UNKNOWN - documented 6-hour window (not hourly split)"
+                ),
+            ),
+        ),
+        source_reference=(
+            "Safdarjung 117.9 mm/24h with verified 80 mm 05:30-08:30 IST "
+            "3-hour block (kushak_event_inventory.csv EV-03, OBSERVED/OFFICIAL)"
+        ),
+        diagnostic=(
+            "EV-03 PARTIAL historical forcing: only the documented 3-hour "
+            "block is executable at native resolution; the remainder is "
+            "explicitly UNKNOWN (no disaggregation)."
+        ),
+    )
+
+
 def get_historical_rainfall_catalog() -> Dict[str, RainfallForcingProfile]:
     """Retrieve the complete deterministic historical rainfall forcing catalog."""
     return {
         "EV-01": get_ev01_safdarjung_profile(),
         "EV-02": get_ev02_safdarjung_profile(),
+        "EV-03": get_ev03_safdarjung_profile(),
     }
 
 

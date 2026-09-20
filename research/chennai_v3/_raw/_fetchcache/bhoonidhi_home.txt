@@ -1,0 +1,53 @@
+STATUS: 200
+FINAL-URL: https://bhoonidhi.nrsc.gov.in/bhoonidhi/
+CONTENT-TYPE: text/html
+============================================================
+ 
+ Explore 
+ Archives 
+ PI Actions 
+ Utilities 
+ Saved Searches 
+ Search ID Monitor 
+ Order Status Monitor 
+ NSIL Order Status Monitor 
+ APA Status Monitor 
+ Processing Tools 
+ Deputy Manager 
+ User Login 
+ Email Notification "
+ data-content="If you do not receive any expected email communication from Bhoonidhi, please check your Spam/Junk folder. If the email is not found there, contact bhoonidhi[at]nrsc[dot]gov[dot]in"
+ style="cursor:pointer;">
+ LogOut 
+ Login 
+ Help 
+ Browsers supported: Firefox 60+, Chrome 78+, Edge 18+, Opera 64+ 
+ About Us 
+ Help 
+ Terms&Conditions 
+ Disclaimer 
+ FAQ 
+ &copy; Bhoonidhi: ISRO/NRSC, 2020 
+ &times; 
+ User Login
+ OFFLINE 
+ PROXY 
+ User ID 
+ User Account 
+ User ID 
+ Account No. 
+ Submit 
+ &times; 
+ &ensp;About Us
+ Welcome to National Remote Sensing Centre ( NRSC) , the nodal centre for hosting Satellite Data Products from IRS satellites and Foreign Satellites. The Data coverage is primarily over India and surroundings . The satellites are tasked in a programmatic manner and also on-demand to specific area of Interest limited by the mission specifications. NRSC also acquires and archives data of global regions for disasters, calibrations and specific studies. 
+ Satellite data received at ground station is automatically transferred into high end data processing, archiving and storage systems. Complex satellite / sensor specific algorithms are used for automated data processing for initial corrections based satellite ephemeris data like orbit and attitude, accession catalogues, etc. Further, geometric and radiometric corrections are carried out for generation of products for dissemination to the users. The open and priced Satellite data can be searched and ordered through Bhoonidhi hosted on internet.
+ As a result of Cooperation Arrangement with the European Commission and the Department of Space of India Under the Copernicus programme, the Sentinel series data is being downloaded as a privileged user to build the regional data access hub for enhanced service to Indian users.
+ Bhoonidhi - ISRO Open Data Access is a single window , one stop hub which facilitates the dissemination of coarse and medium resolution satellite data products to online users on web. Data from IRS and NON-IRS sensors are made available . IRS and Landsat-8 data is processed at IMGEOS however Sentinel series data is made available from ESA site. Bhoonidhi presents a fresh new look and interface for discovering ISRO/NRSC Earth Observation data. It allows to download instantly if available from the online storage. The other products will be made available as delayed Download. The user is intimated once the products are made available for online download through email and SMS. A Batch Downloader utility is provided to download batch of products.
+ Bhoonidhi will be continually updated taking into account the user feedback and other enhancements which are currently planned. Your feedback will be critical in us ensuring that you are able to find and access the data you need in the best way possible. 
+ &times; 
+ &times; 
+ &ensp;Disclaimer
+ Neither the owner, developer, and/or operator of this website are responsible or can be held liable in any way for any information and/or 
+ data, including downloads, shown on or acquired from this website. Information and/or data, including downloads, are to be applied at your 
+ own risk and/or discretion; there is no guarantee of accuracy of any information and/or data affiliated with this website. This includes all
+ information and/or data that are accessible with or without logging in. All data has limitations of radiometric and geometric accuracy.

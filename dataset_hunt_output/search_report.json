@@ -1,0 +1,38 @@
+{
+  "research_objective": "Delhi Kushak Nallah flood nowcasting system evidence: surveyed geometry, datum benchmarks, hydraulic structures, historical model data, observed flood data, rainfall telemetry, hydrologic subcatchment boundaries",
+  "search_interpretation": {
+    "target_phenomenon": "Delhi Kushak Nallah flood nowcasting system evidence: surveyed geometry, datum benchmarks, hydraulic structures, historical model data, observed flood data, rainfall telemetry, hydrologic subcatchment boundaries",
+    "geography": "unspecified",
+    "time_period": "unspecified",
+    "variables": [],
+    "resolutions": [],
+    "data_type": "unspecified",
+    "format": [],
+    "intended_use": "research",
+    "constraints": []
+  },
+  "expanded_search_concepts": [],
+  "sources_searched": [],
+  "total_candidates": 0,
+  "unique_datasets": 0,
+  "duplicate_groups": 0,
+  "top_datasets": [],
+  "all_datasets": [],
+  "search_metadata": {
+    "timestamp": "2026-09-10 17:02:15",
+    "search_mode": "DEEP",
+    "tools_used": [
+      "dataset-hunter"
+    ],
+    "failed_sources": [],
+    "scoring_configuration": {
+      "task_relevance_weight": 0.25,
+      "geographic_match_weight": 0.15,
+      "temporal_match_weight": 0.1,
+      "source_reliability_weight": 0.15,
+      "quality_score_weight": 0.2,
+      "license_score_weight": 0.1,
+      "recency_weight": 0.05
+    }
+  }
+}

@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 import { Map as MapLibreMap, GeoJSONSource, NavigationControl, Popup, setWorkerUrl } from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import workerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url';
+import { apiUrl } from '../api/config';
 
 setWorkerUrl(workerUrl);
 
@@ -491,12 +492,12 @@ const FloodMap = () => {
       const mode = modeOverride || appModeRef.current;
       const sc = scenarioOverride || activeScenarioRef.current;
 
-      let url = `http://localhost:8000/routing/safe-route?start_lon=${start[0]}&start_lat=${start[1]}&end_lon=${end[0]}&end_lat=${end[1]}&horizon=${encodeURIComponent(hz)}`;
+      let url = `/routing/safe-route?start_lon=${start[0]}&start_lat=${start[1]}&end_lon=${end[0]}&end_lat=${end[1]}&horizon=${encodeURIComponent(hz)}`;
       if (mode === 'SCENARIO') {
         url += `&rainfall_scenario_mm=${sc}`;
       }
 
-      const res = await fetch(url);
+      const res = await fetch(apiUrl(url));
       if (!res.ok) {
         const errJson = await res.json().catch(() => null);
         const msg = errJson?.detail || `Routing error (${res.status})`;
@@ -571,7 +572,7 @@ const FloodMap = () => {
       const results = await Promise.all(
         SCENARIO_VALUES.map(async (sc) => {
           const hz = encodeURIComponent(SCENARIO_TO_HORIZON[sc] || '+1h');
-          const res = await fetch(`http://localhost:8000/flood/streets?rainfall_mm=${sc}&horizon=${hz}`);
+          const res = await fetch(apiUrl(`/flood/streets?rainfall_mm=${sc}&horizon=${hz}`));
           if (!res.ok) return null;
           const data: StreetFloodIntelligenceAPI = await res.json();
           return { sc, data };
@@ -595,7 +596,7 @@ const FloodMap = () => {
   const fetchStreetForecastData = useCallback(async (): Promise<Record<string, StreetFloodIntelligenceAPI> | null> => {
     if (streetForecastDataRef.current) return streetForecastDataRef.current;
     try {
-      const res = await fetch('http://localhost:8000/flood/streets/forecast?use_cache=true');
+      const res = await fetch(apiUrl('/flood/streets/forecast?use_cache=true'));
       if (!res.ok) return null;
       const data = await res.json();
       if (!data.horizons || !Array.isArray(data.horizons)) return null;
@@ -615,7 +616,7 @@ const FloodMap = () => {
   const fetchScenarioEvolution = useCallback(async (): Promise<Record<ScenarioValue, HorizonStateAPI> | null> => {
     if (scenarioDataRef.current) return scenarioDataRef.current;
     try {
-      const res = await fetch('http://localhost:8000/flood/forecast', {
+      const res = await fetch(apiUrl('/flood/forecast'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -650,7 +651,7 @@ const FloodMap = () => {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch('http://localhost:8000/flood/historical/2017');
+      const res = await fetch(apiUrl('/flood/historical/2017'));
       if (!res.ok) {
         throw new Error(`Historical Replay API returned HTTP ${res.status}`);
       }
@@ -671,7 +672,7 @@ const FloodMap = () => {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch('http://localhost:8000/flood/forecast?use_cache=true');
+      const res = await fetch(apiUrl('/flood/forecast?use_cache=true'));
       if (!res.ok) {
         throw new Error(`Flood forecast API returned HTTP ${res.status}`);
       }
@@ -1976,10 +1977,10 @@ const FloodMap = () => {
           {/* MAP EXTENT CONTROLS */}
           <div className="map-extent-tools">
             <button type="button" className="extent-btn" onClick={handleResetOverview} title="Reset to full Mumbai region">
-              ⛶ Full Extent (Mumbai)
+              FULL EXTENT · MUMBAI
             </button>
             <button type="button" className="extent-btn highlight" onClick={handleFocusFloodParcel} title="Center on Mumbai pilot zone (Kurla / SCLR)">
-              🎯 Target Zone (Kurla)
+              TARGET ZONE · KURLA
             </button>
             <button
               type="button"
@@ -1987,7 +1988,7 @@ const FloodMap = () => {
               onClick={handleToggleRouting}
               title="Toggle Flood-Safe Route Finder (click map origin & destination)"
             >
-              🧭 Safe Route {isRoutingActive ? '●' : ''}
+              SAFE ROUTE {isRoutingActive ? '●' : ''}
             </button>
           </div>
 
@@ -2357,7 +2358,7 @@ const FloodMap = () => {
           <div className="safe-route-hud-panel">
             <div className="route-hud-header">
               <div className="route-hud-title-group">
-                <span className="route-hud-icon">🧭</span>
+                <span className="route-hud-icon">R</span>
                 <span className="route-hud-title">FLOOD-SAFE ROUTE</span>
               </div>
               <div className="route-hud-actions">
@@ -2389,7 +2390,7 @@ const FloodMap = () => {
                 </div>
               ) : !routeDestination ? (
                 <div className="step-prompt">
-                  <span className="step-pin dest-pin">🎯</span>
+                  <span className="step-pin dest-pin">END</span>
                   <span>Origin set. Click map for <strong>Destination</strong></span>
                 </div>
               ) : routeLoading ? (

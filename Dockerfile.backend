@@ -1,0 +1,24 @@
+# Backend: FastAPI + the Delhi/Kushak scientific core.
+# The evidence data tree (data/) is mounted at runtime, not baked in:
+# it is locally-acquired provenance and must stay out of images.
+FROM python:3.12-slim
+
+WORKDIR /app
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1
+
+COPY backend/requirements.txt /app/backend/requirements.txt
+RUN pip install --no-cache-dir -r /app/backend/requirements.txt
+
+COPY backend /app/backend
+COPY scripts /app/scripts
+COPY main.py /app/main.py
+
+EXPOSE 8000
+
+# /ready reports component-level readiness (datasets, DB, imports).
+HEALTHCHECK --interval=30s --timeout=10s --start-period=20s \
+  CMD python -c "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8000/ready', timeout=5).status == 200 else 1)"
+
+CMD ["uvicorn", "backend.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "1"]

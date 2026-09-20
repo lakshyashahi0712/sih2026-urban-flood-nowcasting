@@ -1,0 +1,68 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  backend-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install backend dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r backend/requirements.txt
+
+      - name: Import / startup check
+        run: python -c "import sys; sys.path.insert(0, 'backend'); sys.path.insert(0, '.'); from backend.main import app; print('backend import OK')"
+
+      # The Delhi domain suite is co-located with the scientific core.
+      - name: Delhi scientific domain suite
+        run: python -m pytest backend/app/domain/delhi -q -p no:cacheprovider
+
+      # The backend/tests suite includes the Mumbai V1 tests and the
+      # Delhi API contract tests.
+      - name: Backend API + legacy suite
+        run: python -m pytest backend/tests -q -p no:cacheprovider
+
+      # The historical replay must PASS its integrity flags — this is the
+      # scientific release gate. Requires the (untracked) evidence data;
+      # skip loudly rather than failing when absent on CI runners.
+      - name: Phase 15.5 historical replay integrity
+        run: |
+          if [ -f data/delhi/derived/validation/kushak_historical_events.csv ]; then
+            python scripts/generate_phase15_replay.py
+          else
+            echo "::warning::data/ evidence tree not present; replay check skipped (local-only evidence data)"
+          fi
+
+  frontend-build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install frontend dependencies
+        run: npm install
+
+      - name: Type-check + production build
+        run: npm run build
+
+      - name: Lint
+        run: npm run lint

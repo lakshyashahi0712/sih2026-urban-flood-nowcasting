@@ -1,0 +1,513 @@
+{
+  "type": "FeatureCollection",
+  "name": "kushak_corridor_centerline",
+  "crs": {
+    "type": "name",
+    "properties": {
+      "name": "urn:ogc:def:crs:OGC:1.3:CRS84"
+    }
+  },
+  "features": [
+    {
+      "type": "Feature",
+      "id": "CORRIDOR_FULL",
+      "properties": {
+        "name": "Kushak Drainage Corridor Canonical Centerline",
+        "total_length_m": 5027.56,
+        "total_length_km": 5.028,
+        "reaches_count": 2,
+        "start_station": "Nehru Park / Yashwant Place (Chanakyapuri)",
+        "end_station": "Defence Colony / Barapullah Main Confluence",
+        "daylight_portal_station": "Africa Avenue / Ring Road Daylight Portal",
+        "daylight_chainage_m": 2318.42,
+        "upstream_origin_wgs84": [
+          77.1992434,
+          28.5869652
+        ],
+        "downstream_outlet_wgs84": [
+          77.2363871,
+          28.5797164
+        ],
+        "provenance_summary": "Reach 1: OSM Way 44351567 (OBSERVED / SECONDARY PHYSICAL EVIDENCE); Reach 2: 9 OSM ways cross-checked with IIT Delhi DMP 2018 / CPCB Drain #14 (OBSERVED / SECONDARY PHYSICAL EVIDENCE & OFFICIAL / AUTHORITATIVE)",
+        "catchment_context": "WORKING MODEL CATCHMENT \u2014 27.66 km\u00b2 (U2 Enforced); WATERSHED STATUS \u2014 PROVISIONAL"
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            77.19924340000001,
+            28.586965199999998
+          ],
+          [
+            77.2008923,
+            28.581911899999998
+          ],
+          [
+            77.2014185,
+            28.580235700000003
+          ],
+          [
+            77.2017564,
+            28.5791595
+          ],
+          [
+            77.2031453,
+            28.5750572
+          ],
+          [
+            77.2034061,
+            28.574494699999995
+          ],
+          [
+            77.2039219,
+            28.573817599999995
+          ],
+          [
+            77.2045399,
+            28.573444200000004
+          ],
+          [
+            77.2054072,
+            28.573254999999993
+          ],
+          [
+            77.2071151,
+            28.57320869999999
+          ],
+          [
+            77.2094437,
+            28.5731362
+          ],
+          [
+            77.2096656,
+            28.573125499999993
+          ],
+          [
+            77.2113222,
+            28.573132000000005
+          ],
+          [
+            77.2117996,
+            28.5731338
+          ],
+          [
+            77.2121189,
+            28.573139999999995
+          ],
+          [
+            77.2133098,
+            28.5731632
+          ],
+          [
+            77.214248,
+            28.573208
+          ],
+          [
+            77.2146856,
+            28.573305400000006
+          ],
+          [
+            77.2150195,
+            28.573443299999994
+          ],
+          [
+            77.2153709,
+            28.5736553
+          ],
+          [
+            77.2154739,
+            28.5737175
+          ],
+          [
+            77.21559770000002,
+            28.5737922
+          ],
+          [
+            77.21821780000002,
+            28.5755722
+          ],
+          [
+            77.219013,
+            28.576112499999997
+          ],
+          [
+            77.2201293,
+            28.576765899999987
+          ],
+          [
+            77.2205376,
+            28.5770528
+          ],
+          [
+            77.2211066,
+            28.577501399999996
+          ],
+          [
+            77.2212384,
+            28.577605299999995
+          ],
+          [
+            77.2215152,
+            28.57789379999999
+          ],
+          [
+            77.221812,
+            28.5783438
+          ],
+          [
+            77.2223012,
+            28.579320499999998
+          ],
+          [
+            77.2224329,
+            28.5794649
+          ],
+          [
+            77.2226125,
+            28.5795912
+          ],
+          [
+            77.2228241,
+            28.5796875
+          ],
+          [
+            77.2230472,
+            28.5797198
+          ],
+          [
+            77.2232359,
+            28.5796976
+          ],
+          [
+            77.2234018,
+            28.579623400000003
+          ],
+          [
+            77.2235525,
+            28.579610300000002
+          ],
+          [
+            77.2237419,
+            28.579640399999988
+          ],
+          [
+            77.2248235,
+            28.579549599999996
+          ],
+          [
+            77.2277015,
+            28.579314099999994
+          ],
+          [
+            77.2289139,
+            28.579266999999998
+          ],
+          [
+            77.2356479,
+            28.57947449999999
+          ],
+          [
+            77.2358984,
+            28.57946949999999
+          ],
+          [
+            77.2361437,
+            28.579535800000002
+          ],
+          [
+            77.2363871,
+            28.579716399999988
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "REACH_1_UNDERGROUND",
+      "properties": {
+        "reach_id": "reach_1_underground",
+        "name": "Africa Avenue Subsurface Stormwater Conduit",
+        "reach_type": "UNDERGROUND_BOX_CULVERT",
+        "start_chainage_m": 0.0,
+        "end_chainage_m": 2318.42,
+        "length_m": 2318.42,
+        "source": "OpenStreetMap Way 44351567",
+        "tags": {
+          "waterway": "drain",
+          "tunnel": "yes",
+          "layer": "-1"
+        },
+        "evidence_class": "OBSERVED / SECONDARY PHYSICAL EVIDENCE",
+        "invert_elevation_status": "UNKNOWN",
+        "conduit_dimensions_status": "UNKNOWN (Subsurface CAD unverified)",
+        "description": "Covered stormwater box culvert running underneath Africa Avenue central median from Yashwant Place to Ring Road"
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            77.19924340000001,
+            28.586965199999998
+          ],
+          [
+            77.2008923,
+            28.581911899999998
+          ],
+          [
+            77.2014185,
+            28.580235700000003
+          ],
+          [
+            77.2017564,
+            28.5791595
+          ],
+          [
+            77.2031453,
+            28.5750572
+          ],
+          [
+            77.2034061,
+            28.574494699999995
+          ],
+          [
+            77.2039219,
+            28.573817599999995
+          ],
+          [
+            77.2045399,
+            28.573444200000004
+          ],
+          [
+            77.2054072,
+            28.573254999999993
+          ],
+          [
+            77.2071151,
+            28.57320869999999
+          ],
+          [
+            77.2094437,
+            28.5731362
+          ],
+          [
+            77.2096656,
+            28.573125499999993
+          ],
+          [
+            77.2113222,
+            28.573132000000005
+          ],
+          [
+            77.2117996,
+            28.5731338
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "REACH_2_OPEN_CHANNEL",
+      "properties": {
+        "reach_id": "reach_2_open_channel",
+        "name": "Kushak Nallah Open Trunk Drain",
+        "reach_type": "OPEN_TRAPEZOIDAL_CANAL",
+        "start_chainage_m": 2318.42,
+        "end_chainage_m": 5027.56,
+        "length_m": 2709.14,
+        "source": "OpenStreetMap 9 contiguous ways cross-referenced with IIT Delhi DMP 2018 / CPCB Drain #14",
+        "evidence_class": "OBSERVED / SECONDARY PHYSICAL EVIDENCE (Alignment) & OFFICIAL / AUTHORITATIVE (Drain Identity & Dimensions)",
+        "invert_elevation_status": "DERIVED (DEM surface offset minus documented wall height with monotonic regularization)",
+        "conduit_dimensions_status": "OFFICIAL / OBSERVED (IIT Delhi DMP 2018 Schedule & PWD Desilting Surveys)",
+        "description": "Open stone masonry and concrete trapezoidal canal flowing past AIIMS, INA, Sewa Nagar, and South Extension into Barapullah Nala"
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            77.2117996,
+            28.5731338
+          ],
+          [
+            77.2121189,
+            28.573139999999995
+          ],
+          [
+            77.2133098,
+            28.5731632
+          ],
+          [
+            77.214248,
+            28.573208
+          ],
+          [
+            77.2146856,
+            28.573305400000006
+          ],
+          [
+            77.2150195,
+            28.573443299999994
+          ],
+          [
+            77.2153709,
+            28.5736553
+          ],
+          [
+            77.2154739,
+            28.5737175
+          ],
+          [
+            77.21559770000002,
+            28.5737922
+          ],
+          [
+            77.21821780000002,
+            28.5755722
+          ],
+          [
+            77.219013,
+            28.576112499999997
+          ],
+          [
+            77.2201293,
+            28.576765899999987
+          ],
+          [
+            77.2205376,
+            28.5770528
+          ],
+          [
+            77.2211066,
+            28.577501399999996
+          ],
+          [
+            77.2212384,
+            28.577605299999995
+          ],
+          [
+            77.2215152,
+            28.57789379999999
+          ],
+          [
+            77.221812,
+            28.5783438
+          ],
+          [
+            77.2223012,
+            28.579320499999998
+          ],
+          [
+            77.2224329,
+            28.5794649
+          ],
+          [
+            77.2226125,
+            28.5795912
+          ],
+          [
+            77.2228241,
+            28.5796875
+          ],
+          [
+            77.2230472,
+            28.5797198
+          ],
+          [
+            77.2232359,
+            28.5796976
+          ],
+          [
+            77.2234018,
+            28.579623400000003
+          ],
+          [
+            77.2235525,
+            28.579610300000002
+          ],
+          [
+            77.2237419,
+            28.579640399999988
+          ],
+          [
+            77.2248235,
+            28.579549599999996
+          ],
+          [
+            77.2277015,
+            28.579314099999994
+          ],
+          [
+            77.2289139,
+            28.579266999999998
+          ],
+          [
+            77.2356479,
+            28.57947449999999
+          ],
+          [
+            77.2358984,
+            28.57946949999999
+          ],
+          [
+            77.2361437,
+            28.579535800000002
+          ],
+          [
+            77.2363871,
+            28.579716399999988
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "POINT_UPSTREAM_ORIGIN",
+      "properties": {
+        "point_type": "UPSTREAM_ORIGIN",
+        "name": "Nehru Park / Yashwant Place Culvert Invert Origin",
+        "chainage_m": 0.0,
+        "evidence_class": "OBSERVED / SECONDARY PHYSICAL EVIDENCE"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          77.19924340000001,
+          28.586965199999998
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "POINT_DAYLIGHT_PORTAL",
+      "properties": {
+        "point_type": "DAYLIGHT_PORTAL",
+        "name": "Africa Avenue / Ring Road Tunnel Daylight Transition",
+        "chainage_m": 2318.42,
+        "evidence_class": "OBSERVED / SECONDARY PHYSICAL EVIDENCE (Topological 0.000m junction)"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          77.2117996,
+          28.5731338
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "POINT_OUTFALL_CONFLUENCE",
+      "properties": {
+        "point_type": "OUTFALL_CONFLUENCE",
+        "name": "Confluence with Barapullah Nala Main Trunk (Defence Colony West)",
+        "chainage_m": 5027.56,
+        "evidence_class": "OFFICIAL / AUTHORITATIVE (CPCB Drain #14 / I&FC Junction)"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          77.2363871,
+          28.579716399999988
+        ]
+      }
+    }
+  ]
+}

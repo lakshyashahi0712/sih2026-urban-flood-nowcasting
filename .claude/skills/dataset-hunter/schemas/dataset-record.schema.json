@@ -1,0 +1,149 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Dataset Record Schema",
+  "type": "object",
+  "properties": {
+    "dataset_name": {
+      "type": "string",
+      "description": "Name of the dataset"
+    },
+    "source": {
+      "type": "string",
+      "description": "Source platform or repository (e.g., Hugging Face, Kaggle, GitHub)"
+    },
+    "organization": {
+      "type": "string",
+      "description": "Organization or institution that published the dataset"
+    },
+    "authors": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "List of authors or contributors"
+    },
+    "description": {
+      "type": "string",
+      "description": "Detailed description of the dataset"
+    },
+    "url": {
+      "type": "string",
+      "format": "uri",
+      "description": "Main URL or landing page for the dataset"
+    },
+    "landing_page": {
+      "type": "string",
+      "format": "uri",
+      "description": "Direct landing page URL (if different from main URL)"
+    },
+    "download_url": {
+      "type": "string",
+      "format": "uri",
+      "description": direct download URL for the dataset
+    },
+    "api_url": {
+      "type": "string",
+      "format": "uri",
+      "description": "API endpoint for programmatic access (if available)"
+    },
+    "license": {
+      "type": "string",
+      "description": "License under which the dataset is distributed"
+    },
+    "license_url": {
+      "type": "string",
+      "format": "uri",
+      "description": "URL to the full license text"
+    },
+    "publication_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Date when the dataset was first published"
+    },
+    "last_updated": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Date when the dataset was last updated"
+    },
+    "geographic_coverage": {
+      "type": "string",
+      "description": "Geographic area covered by the dataset (e.g., 'Delhi, India', 'Global')"
+    },
+    "temporal_coverage": {
+      "type": "string",
+      "description": "Time period covered by the dataset (e.g., '2010-2020', '1980-present')"
+    },
+    "spatial_resolution": {
+      "type": "string",
+      "description": "Spatial resolution of the data (e.g., '1km', '30m', '0.1 degree')"
+    },
+    "temporal_resolution": {
+      "type": "string",
+      "description": "Temporal resolution of the data (e.g., 'hourly', 'daily', 'monthly')"
+    },
+    "variables": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "List of variables or features in the dataset"
+    },
+    "data_format": {
+      "type": "string",
+      "description": "Format of the data files (e.g., 'CSV', 'JSON', 'GeoTIFF', 'NetCDF')"
+    },
+    "file_size": {
+      "type": "string",
+      "description": "Size of the dataset files (e.g., '2.5 GB', '150 MB')"
+    },
+    "record_count": {
+      "type": "integer",
+      "description": "Number of records or observations in the dataset"
+    },
+    "coordinate_reference_system": {
+      "type": "string",
+      "description": "Coordinate reference system used (e.g., 'EPSG:4326', 'WGS84')"
+    },
+    "access_method": {
+      "type": "string",
+      "description": "How to access the data (e.g., 'direct download', 'API', 'web interface')"
+    },
+    "authentication_required": {
+      "type": "boolean",
+      "description": "Whether authentication is required to access the dataset"
+    },
+    "cost": {
+      "type": "string",
+      "description": "Cost to access the dataset (e.g., 'free', '$99/year', 'unknown')"
+    },
+    "documentation_url": {
+      "type": "string",
+      "format": "uri",
+      "description": "URL to documentation or README for the dataset"
+    },
+    "paper_url": {
+      "type": "string",
+      "format": "uri",
+      "description": "URL to associated research paper (if applicable)"
+    },
+    "citation": {
+      "type": "string",
+      "description": "Recommended citation for the dataset"
+    },
+    "provenance": {
+      "type": "string",
+      "description": "Information about the dataset's origins and processing history"
+    },
+    "source_reliability": {
+      "type": "string",
+      "enum": ["Tier 1", "Tier 2", "Tier 3", "Tier 4"],
+      "description": "Reliability tier of the source"
+    }
+  },
+  "required": [
+    "dataset_name",
+    "source",
+    "description",
+    "url"
+  ]
+}

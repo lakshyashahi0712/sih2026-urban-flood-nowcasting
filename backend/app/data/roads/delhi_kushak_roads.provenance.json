@@ -1,0 +1,14 @@
+{
+  "source": "OpenStreetMap via Overpass API",
+  "overpass_url": "https://overpass-api.de/api/interpreter",
+  "bbox": [
+    77.185,
+    28.545,
+    77.275,
+    28.6
+  ],
+  "acquired_at_utc": "2026-09-16T19:59:37.315078+00:00",
+  "query": "\n[out:json][timeout:60];\nway[\"highway\"~\"^(motorway|trunk|primary|secondary|tertiary|residential|unclassified|motorway_link|trunk_link|primary_link|secondary_link|tertiary_link|living_street|service)$\"](28.545,77.185,28.6,77.275);\nout geom;\n",
+  "feature_count": 9048,
+  "note": "Build-time acquisition of the Delhi/Kushak pilot road network. ODbL license; network geometry is OSM-derived evidence, not an as-built survey."
+}
