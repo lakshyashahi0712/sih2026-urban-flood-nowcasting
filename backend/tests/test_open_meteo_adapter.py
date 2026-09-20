@@ -19,7 +19,7 @@ from app.domain.rainfall.exceptions import (
     RainfallAdapterEmptyForecast,
     RainfallAdapterInvalidTimestamp,
 )
-from app.domain.rainfall.models import RainfallStatus, SourceType
+from app.domain.rainfall.models import RainfallProvenance, RainfallStatus, SourceType
 from app.infrastructure.rainfall.open_meteo import OpenMeteoAdapter, OpenMeteoCache
 
 
@@ -367,3 +367,103 @@ async def test_all_elapsed_records_raises_empty_forecast(adapter):
 
             with pytest.raises(RainfallAdapterEmptyForecast):
                 await adapter.fetch(use_cache=False)
+
+
+@pytest.mark.asyncio
+async def test_cache_loads_verified_fallback_on_init(adapter):
+    """Test that OpenMeteoCache loads the verified fallback snapshot on startup."""
+    assert adapter.cache.has_fallback is True
+    # In-memory fresh get() is None initially
+    assert adapter.cache.get(allow_stale=False) is None
+    # get(allow_stale=True) or get_stale() retrieves fallback
+    stale = adapter.cache.get_stale()
+    assert stale is not None
+    assert len(stale.records) == 6
+    assert stale.source == "open-meteo"
+
+
+@pytest.mark.asyncio
+async def test_http_429_returns_stale_fallback_when_cache_allowed(adapter):
+    """Test that HTTP 429 returns stale fallback series with FALLBACK_CACHED_FORECAST provenance."""
+    mock_response = Mock()
+    mock_response.status_code = 429
+    mock_response.text = '{"error": true, "reason": "Daily rate limit exceeded"}'
+
+    with patch.object(httpx.AsyncClient, "get", return_value=mock_response):
+        series = await adapter.fetch(use_cache=True)
+
+    assert series is not None
+    assert len(series.records) == 6
+    assert series.provenance == RainfallProvenance.FALLBACK_CACHED_FORECAST
+    for rec in series.records:
+        assert rec.status == RainfallStatus.STALE
+        assert rec.provenance == RainfallProvenance.FALLBACK_CACHED_FORECAST
+
+
+@pytest.mark.asyncio
+async def test_http_429_raises_when_cache_disabled(adapter):
+    """Test that HTTP 429 raises RainfallAdapterHTTPError when use_cache=False."""
+    mock_response = Mock()
+    mock_response.status_code = 429
+    mock_response.text = '{"error": true, "reason": "Daily rate limit exceeded"}'
+
+    with patch.object(httpx.AsyncClient, "get", return_value=mock_response):
+        with pytest.raises(RainfallAdapterHTTPError) as excinfo:
+            await adapter.fetch(use_cache=False)
+    assert excinfo.value.status_code == 429
+
+
+@pytest.mark.asyncio
+async def test_http_500_returns_stale_fallback_when_cache_allowed(adapter):
+    """Test that HTTP 500 returns stale fallback when use_cache=True."""
+    mock_response = Mock()
+    mock_response.status_code = 500
+    mock_response.text = "Internal Server Error"
+
+    with patch.object(httpx.AsyncClient, "get", return_value=mock_response):
+        series = await adapter.fetch(use_cache=True)
+
+    assert len(series.records) == 6
+    assert series.provenance == RainfallProvenance.FALLBACK_CACHED_FORECAST
+    assert series.records[0].status == RainfallStatus.STALE
+    assert series.records[0].provenance == RainfallProvenance.FALLBACK_CACHED_FORECAST
+
+
+@pytest.mark.asyncio
+async def test_timeout_returns_stale_fallback_when_cache_allowed(adapter):
+    """Test that request timeout returns stale fallback when use_cache=True."""
+    with patch.object(httpx.AsyncClient, "get", side_effect=httpx.TimeoutException("Read timed out")):
+        series = await adapter.fetch(use_cache=True)
+
+    assert len(series.records) == 6
+    assert series.provenance == RainfallProvenance.FALLBACK_CACHED_FORECAST
+    assert series.records[0].status == RainfallStatus.STALE
+    assert series.records[0].provenance == RainfallProvenance.FALLBACK_CACHED_FORECAST
+
+
+@pytest.mark.asyncio
+async def test_connect_error_returns_stale_fallback_when_cache_allowed(adapter):
+    """Test that connection error returns stale fallback when use_cache=True."""
+    with patch.object(httpx.AsyncClient, "get", side_effect=httpx.ConnectError("Connection refused")):
+        series = await adapter.fetch(use_cache=True)
+
+    assert len(series.records) == 6
+    assert series.provenance == RainfallProvenance.FALLBACK_CACHED_FORECAST
+    assert series.records[0].status == RainfallStatus.STALE
+    assert series.records[0].provenance == RainfallProvenance.FALLBACK_CACHED_FORECAST
+
+
+@pytest.mark.asyncio
+async def test_missing_fallback_file_raises_error():
+    """Test that missing fallback file cannot recover from HTTP error even if use_cache=True."""
+    missing_cache = OpenMeteoCache(fallback_path=Path("/path/does/not/exist/cached.json"))
+    assert missing_cache.has_fallback is False
+
+    custom_adapter = OpenMeteoAdapter(cache=missing_cache, timeout=0.1)
+    mock_response = Mock()
+    mock_response.status_code = 429
+    mock_response.text = "Rate limited"
+
+    with patch.object(httpx.AsyncClient, "get", return_value=mock_response):
+        with pytest.raises(RainfallAdapterHTTPError):
+            await custom_adapter.fetch(use_cache=True)

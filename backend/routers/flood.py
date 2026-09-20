@@ -418,13 +418,22 @@ async def compute_flood_forecast_evolution(
             horizon_states.append(state)
 
         elevation_label = "Copernicus GLO-30 DSM (30m)" if not is_temp else "Synthetic DEM (sloping plane prototype)"
+        if status_str == "LIVE":
+            rainfall_prov = "Weather forecast (Open-Meteo hourly NWP)"
+        elif rainfall_mm_list is None and series.records and hasattr(series.records[0].provenance, "value"):
+            rainfall_prov = series.records[0].provenance.value
+        elif rainfall_mm_list is None and series.records:
+            rainfall_prov = str(series.records[0].provenance)
+        else:
+            rainfall_prov = "FALLBACK_CACHED_FORECAST"
+
         return FloodForecastResponse(
             source=source,
             source_type="forecast",
             acquired_at=acquired_at_str,
             status=status_str,
             provenance={
-                "rainfall": "Weather forecast (Open-Meteo hourly NWP)",
+                "rainfall": rainfall_prov,
                 "elevation": elevation_label,
                 "runoff": "rainfall\u2013runoff",
                 "drainage": "drainage capacity",

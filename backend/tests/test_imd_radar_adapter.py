@@ -48,6 +48,7 @@ try:
         CompositeRainfallProvider,
         CompositeRainfallResult,
     )
+    from backend.app.infrastructure.rainfall.open_meteo import OpenMeteoAdapter
 except ImportError:
     from main import app
     from app.domain.rainfall.models import (
@@ -74,6 +75,7 @@ except ImportError:
         CompositeRainfallProvider,
         CompositeRainfallResult,
     )
+    from app.infrastructure.rainfall.open_meteo import OpenMeteoAdapter
 
 client = TestClient(app)
 
@@ -536,7 +538,24 @@ def test_api_composite_rainfall_endpoint():
 
 def test_api_mumbai_endpoint_provenance_backward_compatibility():
     """Verify existing /rainfall/mumbai endpoint includes provenance field."""
-    response = client.get("/rainfall/mumbai")
+    now = datetime.now(timezone.utc)
+    rec = RainfallRecord(
+        timestamp=now,
+        interval_end=now + timedelta(hours=1),
+        rainfall_mm=1.5,
+        source="open-meteo",
+        source_type=SourceType.FORECAST,
+        resolution_minutes=60,
+        acquired_at=now,
+        forecast_lead_minutes=0,
+        status=RainfallStatus.LIVE,
+    )
+    nwp_series = RainfallSeries(records=[rec], source="open-meteo", acquired_at=now)
+
+    with patch.object(OpenMeteoAdapter, "fetch", new_callable=AsyncMock) as mock_fetch:
+        mock_fetch.return_value = nwp_series
+        response = client.get("/rainfall/mumbai")
+
     assert response.status_code == 200
     data = response.json()
 
