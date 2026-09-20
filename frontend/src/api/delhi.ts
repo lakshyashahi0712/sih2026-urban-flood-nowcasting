@@ -1,6 +1,7 @@
 // Typed API client for the Delhi/Kushak V2 backend surface.
-// All calls are relative (same-origin) — the Vite dev server proxies /api
-// to the backend, and in production the app is served behind the same host.
+// Endpoints are resolved via apiUrl() respecting VITE_API_BASE_URL.
+
+import { apiUrl } from './config';
 
 // ---------------------------------------------------------------------------
 // Shared provenance vocabulary (mirrors the backend's explicit state model)
@@ -386,7 +387,7 @@ export class ApiError extends Error {
 }
 
 async function getJson<T>(path: string, signal?: AbortSignal): Promise<T> {
-  const res = await fetch(path, { signal });
+  const res = await fetch(apiUrl(path), { signal });
   if (!res.ok) {
     let detail = res.statusText;
     try {
@@ -517,7 +518,7 @@ export const delhiApi = {
       signal,
     ),
   scenarioRun: async (scenarioId: string) => {
-    const res = await fetch(`/api/scenarios/${scenarioId}/run`, { method: 'POST' });
+    const res = await fetch(apiUrl(`/api/scenarios/${scenarioId}/run`), { method: 'POST' });
     if (!res.ok) {
       throw new Error(`scenario run failed (${res.status})`);
     }

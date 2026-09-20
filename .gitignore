@@ -29,8 +29,38 @@ Desktop.ini
 *.swp
 *.swo
 
-# Data files (acquired evidence — not committed with source; see README)
-/data/
+# Data files (acquired evidence — ignore all by default, explicitly allowlist runtime assets)
+/data/**
+!/data/
+!/data/delhi/
+!/data/delhi/derived/
+!/data/delhi/derived/dem/
+!/data/delhi/derived/dem/kushak_enforced_dem_burn1m.tif
+!/data/delhi/derived/hydraulic/
+!/data/delhi/derived/hydraulic/kushak_corridor_centerline.geojson
+!/data/delhi/derived/hydraulic/kushak_cross_sections.geojson
+!/data/delhi/derived/hydraulic/historical_reconciliation/
+!/data/delhi/derived/hydraulic/historical_reconciliation/kushak_historical_landmarks.geojson
+!/data/delhi/derived/watershed/
+!/data/delhi/derived/watershed/kushak_watershed.geojson
+!/data/delhi/derived/validation/
+!/data/delhi/derived/validation/kushak_historical_events.csv
+!/data/delhi/derived/validation/gsdl_waterlogging/
+!/data/delhi/derived/validation/gsdl_waterlogging/gsdl_waterlogging_normalized_occurrences.geojson
+!/data/delhi/derived/validation/gsdl_waterlogging/gsdl_waterlogging_normalized_occurrences.csv
+!/data/delhi/derived/rainfall/
+!/data/delhi/derived/rainfall/kushak_event_inventory.csv
+!/data/delhi/derived/rainfall/kushak_forcing_hyetograph_20230708_10_safdarjung.csv
+!/data/delhi/derived/rainfall/kushak_forcing_hyetograph_20240628_safdarjung.csv
+!/data/delhi/derived/research/
+!/data/delhi/derived/research/kushak_junction_chainages_digitized.csv
+!/data/delhi/derived/validation/cwc_downstream/
+!/data/delhi/derived/validation/cwc_downstream/cwc_old_railway_bridge_event.csv
+!/data/delhi/derived/validation/dtp_waterlogging/
+!/data/delhi/derived/validation/dtp_waterlogging/dtp_waterlogging_severity_normalized.csv
+!/data/delhi/raw/
+!/data/delhi/raw/drainage/
+!/data/delhi/raw/drainage/kushak_longitudinal_profile_curated.json
 store/
 
 # DuckDB

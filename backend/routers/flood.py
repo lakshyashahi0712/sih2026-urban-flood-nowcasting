@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import tempfile
 import os
+from pathlib import Path
 from datetime import datetime, timezone, timedelta
 from typing import Any, Dict, List, Optional
 import numpy as np
@@ -685,6 +686,17 @@ def get_historical_2017_replay(
     global _HISTORICAL_2017_CACHE
     if use_cache and _HISTORICAL_2017_CACHE is not None:
         return _HISTORICAL_2017_CACHE
+
+    if use_cache:
+        snapshot_path = Path(__file__).resolve().parents[1] / "app" / "data" / "historical" / "mumbai_2017_replay.json"
+        if snapshot_path.exists():
+            try:
+                import json
+                raw_data = json.loads(snapshot_path.read_text(encoding="utf-8"))
+                _HISTORICAL_2017_CACHE = HistoricalReplayResponse.model_validate(raw_data)
+                return _HISTORICAL_2017_CACHE
+            except Exception:
+                pass
 
     event = get_mumbai_august_2017_event()
     engine = HistoricalReplayEngine()

@@ -209,16 +209,13 @@ def _road_match_index():
         if gsig in seen_geo:
             continue
         seen_geo.add(gsig)
-        mx, my = rio_transform(
-            "EPSG:4326", "EPSG:32643",
-            [(geo[0][0] + geo[1][0]) / 2.0], [(geo[0][1] + geo[1][1]) / 2.0],
-        )
-        ux0, uy0 = rio_transform("EPSG:4326", "EPSG:32643", [geo[0][0]], [geo[0][1]])
-        ux1, uy1 = rio_transform("EPSG:4326", "EPSG:32643", [geo[1][0]], [geo[1][1]])
+        ux0, uy0 = graph.node_xy[edge.u]
+        ux1, uy1 = graph.node_xy[edge.v]
+        mx, my = (ux0 + ux1) / 2.0, (uy0 + uy1) / 2.0
         sample_cells = (
-            cells_near(float(ux0[0]), float(uy0[0]), SAMPLE_RADIUS_M)
-            + cells_near(float(mx[0]), float(my[0]), SAMPLE_RADIUS_M)
-            + cells_near(float(ux1[0]), float(uy1[0]), SAMPLE_RADIUS_M)
+            cells_near(float(ux0), float(uy0), SAMPLE_RADIUS_M)
+            + cells_near(float(mx), float(my), SAMPLE_RADIUS_M)
+            + cells_near(float(ux1), float(uy1), SAMPLE_RADIUS_M)
         )
         segments.append({
             "edge_key": edge_key,

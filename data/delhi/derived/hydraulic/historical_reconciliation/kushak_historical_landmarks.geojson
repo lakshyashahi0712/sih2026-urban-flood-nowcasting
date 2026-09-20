@@ -1,0 +1,605 @@
+{
+  "type": "FeatureCollection",
+  "crs": {
+    "type": "name",
+    "properties": {
+      "name": "urn:ogc:def:crs:OGC:1.3:CRS84"
+    }
+  },
+  "features": [
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          77.1989,
+          28.6328
+        ]
+      },
+      "properties": {
+        "name": "Birla Mandir (Laxminarayan Temple)",
+        "alternative_names": "Mandir Marg Ridge Origin",
+        "system_branch": "Central Ridge / Northern Kushak Branch",
+        "network_role": "Historical Upland Headwater Origin",
+        "elevation_m_msl": 245.0,
+        "source": "CGWB Artificial Recharge Report (May 2011, p. 43)",
+        "source_year": 2011,
+        "evidence_class": "OFFICIAL_DESIGN_VALUE",
+        "confidence": "HIGH (Named Origin); CARTOGRAPHIC APPROXIMATION (Exact Invert)",
+        "notes": "CGWB 2011 explicitly records Kushak Nala pilot as originating from Birla Mandir and flowing west of Rashtrapati Bhawan with 3.5 km2 effective catchment."
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          77.1995,
+          28.6143
+        ]
+      },
+      "properties": {
+        "name": "Rashtrapati Bhawan (President's Estate)",
+        "alternative_names": "Presidential Estate Ridge Flank",
+        "system_branch": "Central Ridge / Northern Kushak Branch",
+        "network_role": "Upper Ridge Corridor & RWH Recharge Zone",
+        "elevation_m_msl": 238.0,
+        "source": "CGWB 2011 Report (p. 42-43)",
+        "source_year": 2011,
+        "evidence_class": "OFFICIAL_INSPECTION",
+        "confidence": "HIGH",
+        "notes": "Kushak Nala pilot flows west of Rashtrapati Bhawan; Estate grounds feature 1.3 km2 RWH scheme recharging into upper ridge aquifer."
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          77.199,
+          28.6015
+        ]
+      },
+      "properties": {
+        "name": "Kushak Mahal (Teen Murti Complex)",
+        "alternative_names": "14th Century Firoz Shah Tughlaq Hunting Lodge",
+        "system_branch": "Central Ridge / Northern Kushak Branch",
+        "network_role": "Eponymous Historical Landmark",
+        "elevation_m_msl": 230.0,
+        "source": "Archaeological Survey of India (ASI) / Historical Gazettes / OSM Way 359830361",
+        "source_year": 2024,
+        "evidence_class": "SECONDARY_PHYSICAL_EVIDENCE",
+        "confidence": "VERY HIGH",
+        "notes": "Historical eponymous source of the name 'Kushak Nallah'. Built in 1354 AD on the bank of the natural ridge stream by Firoz Shah Tughlaq."
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          77.185,
+          28.599
+        ]
+      },
+      "properties": {
+        "name": "S.P. Marg (Sardar Patel Marg)",
+        "alternative_names": "Ridge Western Divide",
+        "system_branch": "Central Ridge / Northern Kushak Branch",
+        "network_role": "Western Ridge Drainage Divide",
+        "elevation_m_msl": 242.0,
+        "source": "Topographical Survey / Copernicus GLO-30 DSM",
+        "source_year": 2026,
+        "evidence_class": "DERIVED",
+        "confidence": "HIGH",
+        "notes": "Acts as the macro surface drainage divide between the Barapullah/Kushak basin to the east and the Dhaula Kuan/Najafgarh system to the west."
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          77.193,
+          28.59
+        ]
+      },
+      "properties": {
+        "name": "Satya Marg (Chanakyapuri)",
+        "alternative_names": "Diplomatic Sector Central Arterial",
+        "system_branch": "Central Ridge / Northern Kushak Branch",
+        "network_role": "Intermediate Feeder / Drainage Corridor",
+        "elevation_m_msl": 228.0,
+        "source": "NDMC Drainage Master Records",
+        "source_year": 2007,
+        "evidence_class": "SECONDARY_PHYSICAL_EVIDENCE",
+        "confidence": "MEDIUM (Subsurface Routing)",
+        "notes": "Traverses Chanakyapuri diplomatic sector, conveying surface and storm drainage south-southeast toward Nehru Park."
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          77.19,
+          28.592
+        ]
+      },
+      "properties": {
+        "name": "Chanakyapuri",
+        "alternative_names": "Diplomatic Enclave",
+        "system_branch": "Central Ridge / Northern Kushak Branch",
+        "network_role": "Urbanized Headwater Sub-basin",
+        "elevation_m_msl": 226.0,
+        "source": "NDMC Sub-city Development Plan 2007",
+        "source_year": 2007,
+        "evidence_class": "OFFICIAL_DESIGN_VALUE",
+        "confidence": "HIGH",
+        "notes": "Urbanized district built over the historical natural drain pathways. Surface flow is captured into NDMC road conduits."
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          77.198,
+          28.589
+        ]
+      },
+      "properties": {
+        "name": "Nehru Park",
+        "alternative_names": "Chanakyapuri Central Depression",
+        "system_branch": "Central Ridge / Northern Kushak Branch",
+        "network_role": "Greenway Retention & Subsurface Transition",
+        "elevation_m_msl": 224.5,
+        "source": "CGWB 2011 (p. 47) / NDMC Park Records",
+        "source_year": 2011,
+        "evidence_class": "OFFICIAL_INSPECTION",
+        "confidence": "HIGH",
+        "notes": "Large municipal landscaped depression sitting at the transition between Teen Murti/Chanakyapuri and the Africa Avenue corridor."
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          77.208,
+          28.597
+        ]
+      },
+      "properties": {
+        "name": "Kamal Ataturk Marg",
+        "alternative_names": "Race Course Northern Road",
+        "system_branch": "Central Ridge / Northern Kushak Branch",
+        "network_role": "Northern Lateral Tributary / Road Drainage Feeder",
+        "elevation_m_msl": 222.0,
+        "source": "NDMC Road Drainage Inventory",
+        "source_year": 2024,
+        "evidence_class": "SECONDARY_PHYSICAL_EVIDENCE",
+        "confidence": "MEDIUM",
+        "notes": "Runs northeast of Nehru Park / Delhi Gymkhana Club, discharging lateral storm runoff south toward the Safdarjung / Kushak channel."
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          77.19924,
+          28.58697
+        ]
+      },
+      "properties": {
+        "name": "Yashwant Place (Chanakyapuri)",
+        "alternative_names": "Africa Avenue Northern Portal",
+        "system_branch": "Central Ridge / Northern Kushak Branch",
+        "network_role": "Upstream Origin Node of Current 5.028 km GIS Corridor",
+        "elevation_m_msl": 224.9,
+        "source": "OSM Way 44351567 / NDMC NIT 52/EE(R-III)/2025-26",
+        "source_year": 2026,
+        "evidence_class": "SECONDARY_PHYSICAL_EVIDENCE",
+        "confidence": "VERY HIGH (Location); UNKNOWN (Invert Elevation)",
+        "notes": "Northernmost verified node of the current project GIS corridor. Connected to underground box culvert beneath Africa Avenue."
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          77.204,
+          28.58
+        ]
+      },
+      "properties": {
+        "name": "Africa Avenue Subsurface Corridor",
+        "alternative_names": "Covered RCC Box Culvert (Reach 1)",
+        "system_branch": "Central Ridge / Northern Kushak Branch",
+        "network_role": "Subsurface Conduit Conveyance (2,318.42 m)",
+        "elevation_m_msl": 218.5,
+        "source": "NDMC NIT No. 52/EE(R-III)/2025-26 & OSM Way 44351567",
+        "source_year": 2026,
+        "evidence_class": "OFFICIAL_INSPECTION (Construction Form); UNKNOWN (Dimensions/Invert)",
+        "confidence": "VERY HIGH (Alignment); UNKNOWN (Conduit Size)",
+        "notes": "RCC covered box drain running underneath the Africa Avenue central median swale under NDMC R-III Division jurisdiction."
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          77.21182,
+          28.57313
+        ]
+      },
+      "properties": {
+        "name": "Daylight Outfall Portal (Ring Road / Africa Ave)",
+        "alternative_names": "Reach 1 to Reach 2 Transition Node",
+        "system_branch": "Central Ridge / Northern Kushak Branch",
+        "network_role": "Underground-to-Open Hydraulic Transition",
+        "elevation_m_msl": 215.33,
+        "source": "OSM Relation / Field Survey / SIH 2026 CS-01",
+        "source_year": 2026,
+        "evidence_class": "OFFICIAL_SURVEY_OBSERVED (Portal Location); DERIVED (Invert 212.83m)",
+        "confidence": "VERY HIGH (Portal Coordinate)",
+        "notes": "Point where the subsurface Africa Avenue conduit daylights on the south side of Ring Road into the open Kushak canal."
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          77.21,
+          28.568
+        ]
+      },
+      "properties": {
+        "name": "AIIMS / Aurobindo Marg",
+        "alternative_names": "Rajiv Gandhi Setu Flyover Intersection",
+        "system_branch": "Central Ridge / Northern Kushak Branch",
+        "network_role": "Major Chronic Flood Hotspot / Lateral Feeder Junction",
+        "elevation_m_msl": 212.5,
+        "source": "CGWB 2011 (p. 47-48) / Delhi Traffic Police Advisories",
+        "source_year": 2011,
+        "evidence_class": "OFFICIAL_INSPECTION",
+        "confidence": "VERY HIGH",
+        "notes": "Intersection of Ring Road and Aurobindo Marg. Features 10 CGWB recharge shafts handling 35,000 m3 runoff. Kushak Nallah runs adjacent to AIIMS residential campus."
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          77.218,
+          28.575
+        ]
+      },
+      "properties": {
+        "name": "INA Market / Kidwai Nagar",
+        "alternative_names": "INA Metro / Elevated Viaduct Crossing",
+        "system_branch": "Central Ridge / Northern Kushak Branch",
+        "network_role": "Critical Physical Bottleneck (600 m Constriction)",
+        "elevation_m_msl": 212.2,
+        "source": "NGT OA No. 6/2012 (Order dt. 06.08.2024, Para 4(ii))",
+        "source_year": 2024,
+        "evidence_class": "OFFICIAL_INSPECTION",
+        "confidence": "VERY HIGH",
+        "notes": "Designated by NGT and MCD as a 600m critical bottleneck where machinery cannot enter due to low elevated road clearance, PWD walls, and jhuggis."
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          77.2275,
+          28.5794
+        ]
+      },
+      "properties": {
+        "name": "Sewa Nagar / Kushak Bus Depot",
+        "alternative_names": "DTC Kushak Bus Depot Deck / Barapullah Transit",
+        "system_branch": "Central Ridge / Northern Kushak Branch",
+        "network_role": "Major Covered Deck Section (1,050 m on 4m x 4m Columns)",
+        "elevation_m_msl": 212.0,
+        "source": "NGT OA 6/2012 & UTTIPEC 47th GB Minutes (Project 35)",
+        "source_year": 2014,
+        "evidence_class": "OFFICIAL_AS_BUILT (Deck Dimensions: 1050m x 50m); UNKNOWN (Waterway Width)",
+        "confidence": "VERY HIGH (Deck Geometry)",
+        "notes": "1,050m covered deck constructed over the canal for CWG 2010. 50m deck width is surface parking, NOT hydraulic channel width. 4m x 4m column grid creates severe form drag."
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          77.232,
+          28.572
+        ]
+      },
+      "properties": {
+        "name": "Defence Colony",
+        "alternative_names": "Defence Colony Drain Corridor",
+        "system_branch": "Southern / Eastern Lateral Branch",
+        "network_role": "Major Lateral Tributary (1,600 m Total Length)",
+        "elevation_m_msl": 211.8,
+        "source": "NGT OA 6/2012 Order dt. 23.04.2025 & NGT 2015 Judgment (Para 10, 60)",
+        "source_year": 2015,
+        "evidence_class": "OFFICIAL_INSPECTION",
+        "confidence": "VERY HIGH",
+        "notes": "Tributary has 1,300m covered reach on columns and 300m open reach. Severe chronic underpass waterlogging hotspot."
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          77.235,
+          28.583
+        ]
+      },
+      "properties": {
+        "name": "Jawaharlal Nehru Stadium (JLN Stadium)",
+        "alternative_names": "JLN Stadium Gate No. 7 Transit Zone",
+        "system_branch": "Grand Confluence Zone",
+        "network_role": "Deck Terminus & Eastern Boundary",
+        "elevation_m_msl": 211.5,
+        "source": "UTTIPEC 47th GB Minutes Project 35",
+        "source_year": 2014,
+        "evidence_class": "OFFICIAL_AS_BUILT",
+        "confidence": "VERY HIGH",
+        "notes": "Marks the downstream end of the Kushak Bus Depot deck slab adjacent to Gate No. 7."
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          77.242,
+          28.585
+        ]
+      },
+      "properties": {
+        "name": "Jangpura",
+        "alternative_names": "Jangpura Railway Line Culvert",
+        "system_branch": "Grand Confluence Zone",
+        "network_role": "Downstream Open Canal Reach",
+        "elevation_m_msl": 210.0,
+        "source": "NGT 2015 Judgment (Para 10)",
+        "source_year": 2015,
+        "evidence_class": "OFFICIAL_INSPECTION",
+        "confidence": "HIGH",
+        "notes": "Canal passes beneath Northern Railway main lines into the historic Barapullah gorge."
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          77.235,
+          28.59
+        ]
+      },
+      "properties": {
+        "name": "Lodhi Road",
+        "alternative_names": "NDMC Southern Drainage Boundary",
+        "system_branch": "Northern NDMC Drainage Systems",
+        "network_role": "NDMC Drainage Discharge Outfall Zone",
+        "elevation_m_msl": 214.0,
+        "source": "NDMC Sub-city Development Plan 2007",
+        "source_year": 2007,
+        "evidence_class": "OFFICIAL_DESIGN_VALUE",
+        "confidence": "HIGH",
+        "notes": "2007 NDMC Plan notes two NDMC drainage systems discharging to Kushak Nallah near Lodhi Road."
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          77.2335,
+          28.5885
+        ]
+      },
+      "properties": {
+        "name": "Dyal Singh College (Dayal Singh College)",
+        "alternative_names": "Lodhi Road Drainage Milestone",
+        "system_branch": "Northern NDMC Drainage Systems",
+        "network_role": "Municipal Drainage Outfall Milestone",
+        "elevation_m_msl": 213.5,
+        "source": "NDMC Sub-city Development Plan 2007",
+        "source_year": 2007,
+        "evidence_class": "OFFICIAL_DESIGN_VALUE",
+        "confidence": "HIGH",
+        "notes": "Explicit landmark cited in 2007 NDMC Plan where urban storm drains discharge into Kushak Nallah."
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          77.2363,
+          28.5797
+        ]
+      },
+      "properties": {
+        "name": "Barapullah Grand Confluence Head",
+        "alternative_names": "Kushak - Sunehri - Defence Colony Junction",
+        "system_branch": "Grand Confluence Zone",
+        "network_role": "Terminus of Current 5.028 km GIS Corridor",
+        "elevation_m_msl": 211.54,
+        "source": "IIT Delhi DMP 2018 / CPCB NWMP Drain #14 / SIH 2026 CS-07",
+        "source_year": 2026,
+        "evidence_class": "OFFICIAL_SURVEY_OBSERVED (Location); DERIVED (Invert 207.34m)",
+        "confidence": "VERY HIGH",
+        "notes": "Junction where the western Kushak channel joins the southern Chirag Delhi/Defence Colony trunk and northern Sunehri Nallah to form Barapullah Nallah."
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          77.21,
+          28.515
+        ]
+      },
+      "properties": {
+        "name": "Southern Ridge beyond Mehrauli-Badarpur Road",
+        "alternative_names": "MB Road Southern Divide (Saket / Sainik Farm)",
+        "system_branch": "Southern Trunk (NGT 11 km 'Kushak System')",
+        "network_role": "Southern Branch Headwater Origin",
+        "elevation_m_msl": 260.0,
+        "source": "NGT 2015 Judgment (Para 10)",
+        "source_year": 2015,
+        "evidence_class": "OFFICIAL_INSPECTION",
+        "confidence": "VERY HIGH (Textual Origin)",
+        "notes": "NGT Para 10 explicitly designates the Southern Ridge beyond Mehrauli Badarpur Road as the origin of the 11 km 'Kushak drainage system in South Delhi'."
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          77.218,
+          28.525
+        ]
+      },
+      "properties": {
+        "name": "Saket / Pushp Vihar",
+        "alternative_names": "Pushp Vihar Drain Reach",
+        "system_branch": "Southern Trunk (NGT 11 km 'Kushak System')",
+        "network_role": "Upper Southern Urban Reach (Covered)",
+        "elevation_m_msl": 240.0,
+        "source": "NGT 2015 Judgment (Para 10 & Para 63)",
+        "source_year": 2015,
+        "evidence_class": "OFFICIAL_INSPECTION",
+        "confidence": "VERY HIGH",
+        "notes": "Drain partially covered under municipal works. NGT ordered iron bars removed and prohibited further covering."
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          77.224,
+          28.535
+        ]
+      },
+      "properties": {
+        "name": "Khidki Village / Sheikh Sarai",
+        "alternative_names": "Sheikh Sarai Drain Transition",
+        "system_branch": "Southern Trunk (NGT 11 km 'Kushak System')",
+        "network_role": "Intermediate Southern Corridor",
+        "elevation_m_msl": 230.0,
+        "source": "NGT 2015 Judgment (Para 10)",
+        "source_year": 2015,
+        "evidence_class": "OFFICIAL_INSPECTION",
+        "confidence": "VERY HIGH",
+        "notes": "Drains sewage and storm runoff from urban villages onto Chirag Delhi."
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          77.227,
+          28.538
+        ]
+      },
+      "properties": {
+        "name": "Chirag Delhi",
+        "alternative_names": "Chirag Delhi Nallah Crossing Outer Ring Road",
+        "system_branch": "Southern Trunk (NGT 11 km 'Kushak System')",
+        "network_role": "Major Urban Surcharge Chokepoint",
+        "elevation_m_msl": 224.0,
+        "source": "NGT 2015 Judgment (Para 10 & Para 63)",
+        "source_year": 2015,
+        "evidence_class": "OFFICIAL_INSPECTION",
+        "confidence": "VERY HIGH",
+        "notes": "Crosses Outer Ring Road. NGT Para 63 noted iron bars on one side and prohibited covering."
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          77.225,
+          28.548
+        ]
+      },
+      "properties": {
+        "name": "Panchsheel Enclave",
+        "alternative_names": "Panchsheel Drain Corridor",
+        "system_branch": "Southern Trunk (NGT 11 km 'Kushak System')",
+        "network_role": "Urban Intermediate Channel",
+        "elevation_m_msl": 220.0,
+        "source": "NGT 2015 Judgment (Para 10)",
+        "source_year": 2015,
+        "evidence_class": "OFFICIAL_INSPECTION",
+        "confidence": "VERY HIGH",
+        "notes": "North of Outer Ring Road, skirts along Siri Fort area."
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          77.228,
+          28.555
+        ]
+      },
+      "properties": {
+        "name": "Siri Fort / Greater Kailash-I (G.K.-I)",
+        "alternative_names": "G.K.-I Drain Reach",
+        "system_branch": "Southern Trunk (NGT 11 km 'Kushak System')",
+        "network_role": "Intermediate Channel (Partially Covered)",
+        "elevation_m_msl": 218.0,
+        "source": "NGT 2015 Judgment (Para 10 & Para 63)",
+        "source_year": 2015,
+        "evidence_class": "OFFICIAL_INSPECTION",
+        "confidence": "VERY HIGH",
+        "notes": "NGT directed stopping construction and removing middle-section iron bars in G.K.-I drain."
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          77.228,
+          28.563
+        ]
+      },
+      "properties": {
+        "name": "Andrews Ganj",
+        "alternative_names": "Andrews Ganj Nallah",
+        "system_branch": "Southern Trunk (NGT 11 km 'Kushak System')",
+        "network_role": "Conduit Bifurcation / Junction with Defence Colony",
+        "elevation_m_msl": 215.0,
+        "source": "NGT 2015 Judgment (Para 10 & Para 63)",
+        "source_year": 2015,
+        "evidence_class": "OFFICIAL_INSPECTION",
+        "confidence": "VERY HIGH",
+        "notes": "NGT directed stopping further covering and removing iron bars in Andrews Ganj drain."
+      }
+    }
+  ]
+}

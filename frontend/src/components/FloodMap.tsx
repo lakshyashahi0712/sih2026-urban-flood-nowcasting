@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 import { Map as MapLibreMap, GeoJSONSource, NavigationControl, Popup, setWorkerUrl } from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import workerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url';
+import { apiUrl } from '../api/config';
 
 setWorkerUrl(workerUrl);
 
@@ -496,7 +497,7 @@ const FloodMap = () => {
         url += `&rainfall_scenario_mm=${sc}`;
       }
 
-      const res = await fetch(url);
+      const res = await fetch(apiUrl(url));
       if (!res.ok) {
         const errJson = await res.json().catch(() => null);
         const msg = errJson?.detail || `Routing error (${res.status})`;
@@ -571,7 +572,7 @@ const FloodMap = () => {
       const results = await Promise.all(
         SCENARIO_VALUES.map(async (sc) => {
           const hz = encodeURIComponent(SCENARIO_TO_HORIZON[sc] || '+1h');
-          const res = await fetch(`/flood/streets?rainfall_mm=${sc}&horizon=${hz}`);
+          const res = await fetch(apiUrl(`/flood/streets?rainfall_mm=${sc}&horizon=${hz}`));
           if (!res.ok) return null;
           const data: StreetFloodIntelligenceAPI = await res.json();
           return { sc, data };
@@ -595,7 +596,7 @@ const FloodMap = () => {
   const fetchStreetForecastData = useCallback(async (): Promise<Record<string, StreetFloodIntelligenceAPI> | null> => {
     if (streetForecastDataRef.current) return streetForecastDataRef.current;
     try {
-      const res = await fetch('/flood/streets/forecast?use_cache=true');
+      const res = await fetch(apiUrl('/flood/streets/forecast?use_cache=true'));
       if (!res.ok) return null;
       const data = await res.json();
       if (!data.horizons || !Array.isArray(data.horizons)) return null;
@@ -615,7 +616,7 @@ const FloodMap = () => {
   const fetchScenarioEvolution = useCallback(async (): Promise<Record<ScenarioValue, HorizonStateAPI> | null> => {
     if (scenarioDataRef.current) return scenarioDataRef.current;
     try {
-      const res = await fetch('/flood/forecast', {
+      const res = await fetch(apiUrl('/flood/forecast'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -650,7 +651,7 @@ const FloodMap = () => {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch('/flood/historical/2017');
+      const res = await fetch(apiUrl('/flood/historical/2017'));
       if (!res.ok) {
         throw new Error(`Historical Replay API returned HTTP ${res.status}`);
       }
@@ -671,7 +672,7 @@ const FloodMap = () => {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch('/flood/forecast?use_cache=true');
+      const res = await fetch(apiUrl('/flood/forecast?use_cache=true'));
       if (!res.ok) {
         throw new Error(`Flood forecast API returned HTTP ${res.status}`);
       }

@@ -1,0 +1,355 @@
+{
+  "type": "FeatureCollection",
+  "name": "kushak_cross_sections",
+  "crs": {
+    "type": "name",
+    "properties": {
+      "name": "urn:ogc:def:crs:OGC:1.3:CRS84"
+    }
+  },
+  "features": [
+    {
+      "type": "Feature",
+      "id": "CS-01",
+      "properties": {
+        "cross_section_id": "CS-01",
+        "name": "Daylight Outfall Portal (Ring Road / Africa Ave)",
+        "reach_id": "reach_2_open_channel",
+        "chainage_m": 2320.0,
+        "latitude": 28.5731341,
+        "longitude": 77.2118158,
+        "geometry_type": "RECTANGULAR_TRANSITION",
+        "bottom_width_m": 6.5,
+        "top_width_m": 10.0,
+        "bank_height_m": 2.5,
+        "side_slope_h_v": 0.7,
+        "raw_dsm_elevation_m": 213.91,
+        "conditioned_bank_elevation_m": 215.33,
+        "derived_bed_elevation_m": 212.83,
+        "invert_provenance": "DERIVED (UNVALIDATED SYNTHETIC OFFSET: Conditioned bank elevation minus nominal depth H, +/-1.0m to +/-1.5m uncertainty)",
+        "dimensions_source": "Synthesized engineering transect interpolating the 6-18m macro corridor width reported in PWD/I&FC affidavits and DMP narrative. Previous citation ('DMP Ch 3.2.4 Reach A') was erroneous (Table 3.2-4 in DMP is node flood volumes, not drain geometry).",
+        "dimensions_provenance": "ASSUMED (Regularized engineering transect based on macro 6-18m range)",
+        "uncertainty_width_m": 0.5,
+        "uncertainty_depth_m": 0.4,
+        "uncertainty_bed_elevation_m": 1.5,
+        "manning_n_clean_design": 0.025,
+        "manning_n_silted_operational": 0.035,
+        "description": "Culvert emergence portal south of Ring Road. Vertical masonry wingwalls transitioning to open trapezoidal channel.",
+        "forensic_audit_verdict": "UNVERIFIED (Citations Erroneous); GEOMETRY IS ASSUMED / REGULARIZED",
+        "spatial_consistency_audit": "MATCH: Located at true daylight emergence south of Ring Road on Kushak Nallah (28.57313N, 77.21182E).",
+        "invert_audit_note": "DOWNGRADED: Invert 211.03m is an unvalidated synthetic offset (Z_bank - H) from 30m Copernicus DSM. Not a geodetic benchmark datum (uncertainty +/-1.2m)."
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            77.2118109,
+            28.5734047
+          ],
+          [
+            77.2118158,
+            28.5731341
+          ],
+          [
+            77.2118206,
+            28.5728635
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "CS-02",
+      "properties": {
+        "cross_section_id": "CS-02",
+        "name": "Safdarjung Airport South Perimeter / Laxmibai Nagar",
+        "reach_id": "reach_2_open_channel",
+        "chainage_m": 2850.0,
+        "latitude": 28.5745793,
+        "longitude": 77.2167563,
+        "geometry_type": "TRAPEZOIDAL_LINED",
+        "bottom_width_m": 8.0,
+        "top_width_m": 12.5,
+        "bank_height_m": 2.8,
+        "side_slope_h_v": 0.8,
+        "raw_dsm_elevation_m": 209.75,
+        "conditioned_bank_elevation_m": 212.16,
+        "derived_bed_elevation_m": 209.36,
+        "invert_provenance": "DERIVED (UNVALIDATED SYNTHETIC OFFSET: Conditioned bank elevation minus nominal depth H, +/-1.0m to +/-1.5m uncertainty)",
+        "dimensions_source": "Synthesized engineering transect. Previous citation ('DMP SWMM Schedule Reach B') was erroneous (no such reach schedule exists in DMP 2018).",
+        "dimensions_provenance": "ASSUMED (Regularized engineering transect based on macro 6-18m range)",
+        "uncertainty_width_m": 0.5,
+        "uncertainty_depth_m": 0.3,
+        "uncertainty_bed_elevation_m": 1.5,
+        "manning_n_clean_design": 0.025,
+        "manning_n_silted_operational": 0.035,
+        "description": "Trapezoidal stone masonry open channel running south of Safdarjung Airport runway boundary.",
+        "forensic_audit_verdict": "UNVERIFIED (Citations Erroneous); GEOMETRY IS ASSUMED / REGULARIZED",
+        "spatial_consistency_audit": "MATCH: Located on Kushak Nallah south of Safdarjung Airport runway boundary (28.57322N, 77.21485E).",
+        "invert_audit_note": "DOWNGRADED: Invert 209.36m is an unvalidated synthetic offset (Z_bank - H) from 30m Copernicus DSM (uncertainty +/-1.2m)."
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            77.2165615,
+            28.5748027
+          ],
+          [
+            77.2167563,
+            28.5745793
+          ],
+          [
+            77.2169511,
+            28.5743559
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "CS-03",
+      "properties": {
+        "cross_section_id": "CS-03",
+        "name": "Kidwai Nagar West / AIIMS Residential Transit",
+        "reach_id": "reach_2_open_channel",
+        "chainage_m": 3350.0,
+        "latitude": 28.5772885,
+        "longitude": 77.2208365,
+        "geometry_type": "TRAPEZOIDAL_LINED",
+        "bottom_width_m": 10.0,
+        "top_width_m": 14.5,
+        "bank_height_m": 3.0,
+        "side_slope_h_v": 0.75,
+        "raw_dsm_elevation_m": 211.34,
+        "conditioned_bank_elevation_m": 212.54,
+        "derived_bed_elevation_m": 209.54,
+        "invert_provenance": "DERIVED (UNVALIDATED SYNTHETIC OFFSET: Conditioned bank elevation minus nominal depth H, +/-1.0m to +/-1.5m uncertainty)",
+        "dimensions_source": "Synthesized engineering transect. Previous citations ('NBCC Kidwai Nagar EIA / DMP Reach C') do not publish drain cross-sections. NBCC EIA only covers internal rainwater harvesting; DMP lacks Reach C.",
+        "dimensions_provenance": "ASSUMED (Regularized engineering transect based on macro 6-18m range)",
+        "uncertainty_width_m": 0.6,
+        "uncertainty_depth_m": 0.3,
+        "uncertainty_bed_elevation_m": 1.5,
+        "manning_n_clean_design": 0.025,
+        "manning_n_silted_operational": 0.035,
+        "description": "Trapezoidal canal with reinforced concrete bed and dressed stone masonry sidewalls.",
+        "forensic_audit_verdict": "UNVERIFIED (Citations Erroneous); GEOMETRY IS ASSUMED / REGULARIZED",
+        "spatial_consistency_audit": "MATCH: Located on Kushak Nallah adjacent to NBCC Kidwai Nagar / AIIMS (28.57480N, 77.21730E).",
+        "invert_audit_note": "DOWNGRADED: Invert 209.16m is an unvalidated synthetic offset (Z_bank - H) from 30m Copernicus DSM (uncertainty +/-1.2m)."
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            77.220617,
+            28.5775055
+          ],
+          [
+            77.2208365,
+            28.5772885
+          ],
+          [
+            77.2210561,
+            28.5770715
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "CS-04",
+      "properties": {
+        "cross_section_id": "CS-04",
+        "name": "INA Market / Aurobindo Marg Culvert Transition",
+        "reach_id": "reach_2_open_channel",
+        "chainage_m": 3700.0,
+        "latitude": 28.5797064,
+        "longitude": 77.2229548,
+        "geometry_type": "RECTANGULAR_TRANSITION",
+        "bottom_width_m": 12.0,
+        "top_width_m": 16.0,
+        "bank_height_m": 3.2,
+        "side_slope_h_v": 0.6,
+        "raw_dsm_elevation_m": 208.46,
+        "conditioned_bank_elevation_m": 212.16,
+        "derived_bed_elevation_m": 208.96,
+        "invert_provenance": "DERIVED (UNVALIDATED SYNTHETIC OFFSET: Conditioned bank elevation minus nominal depth H, +/-1.0m to +/-1.5m uncertainty)",
+        "dimensions_source": "Synthesized engineering transect. Previous citations ('PWD Aurobindo Marg Audit / DMP Reach D') do not publish cross-section tables.",
+        "dimensions_provenance": "ASSUMED (Regularized engineering transect based on macro 6-18m range)",
+        "uncertainty_width_m": 0.8,
+        "uncertainty_depth_m": 0.4,
+        "uncertainty_bed_elevation_m": 1.5,
+        "manning_n_clean_design": 0.025,
+        "manning_n_silted_operational": 0.035,
+        "description": "Culvert transition section upstream of Aurobindo Marg arterial road and Dilli Haat pedestrian deck.",
+        "forensic_audit_verdict": "UNVERIFIED (Citations Erroneous); GEOMETRY IS ASSUMED / REGULARIZED",
+        "spatial_consistency_audit": "MATCH: Located on Kushak Nallah upstream of Aurobindo Marg / INA culvert (28.57650N, 77.21980E).",
+        "invert_audit_note": "DOWNGRADED: Invert 208.80m is an unvalidated synthetic offset (Z_bank - H) from 30m Copernicus DSM (uncertainty +/-1.5m due to metro viaduct artifact)."
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            77.2229002,
+            28.5800002
+          ],
+          [
+            77.2229548,
+            28.5797064
+          ],
+          [
+            77.2230094,
+            28.5794126
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "CS-05",
+      "properties": {
+        "cross_section_id": "CS-05",
+        "name": "Sewa Nagar Railway Bridge / CPCB Station",
+        "reach_id": "reach_2_open_channel",
+        "chainage_m": 4150.0,
+        "latitude": 28.5793297,
+        "longitude": 77.2275106,
+        "geometry_type": "TRAPEZOIDAL_LINED",
+        "bottom_width_m": 14.0,
+        "top_width_m": 18.5,
+        "bank_height_m": 3.5,
+        "side_slope_h_v": 0.65,
+        "raw_dsm_elevation_m": 211.83,
+        "conditioned_bank_elevation_m": 212.04,
+        "derived_bed_elevation_m": 208.54,
+        "invert_provenance": "DERIVED (UNVALIDATED SYNTHETIC OFFSET: Conditioned bank elevation minus nominal depth H, +/-1.0m to +/-1.5m uncertainty)",
+        "dimensions_source": "Synthesized engineering transect. Previous citation ('CPCB NWMP Drain #14') is a SEVERE SPATIAL MISATTRIBUTION: CPCB Drain #14 is the Barapullah outfall to the Yamuna at Sarai Kale Khan (>6 km downstream), NOT Sewa Nagar railway bridge on Kushak Nallah.",
+        "dimensions_provenance": "ASSUMED (Regularized engineering transect based on macro 6-18m range)",
+        "uncertainty_width_m": 0.5,
+        "uncertainty_depth_m": 0.3,
+        "uncertainty_bed_elevation_m": 1.5,
+        "manning_n_clean_design": 0.025,
+        "manning_n_silted_operational": 0.035,
+        "description": "Trapezoidal stone masonry channel passing underneath the Northern Railway Ring Railway bridge.",
+        "forensic_audit_verdict": "UNVERIFIED (SPATIALLY MISATTRIBUTED CITATION); GEOMETRY IS ASSUMED / REGULARIZED",
+        "spatial_consistency_audit": "MISATTRIBUTION FLAGGED: CPCB Drain #14 is the Yamuna outfall. While the physical location (28.57880N, 77.22210E) is on Kushak Nallah at Sewa Nagar, CPCB does not monitor a station here.",
+        "invert_audit_note": "DOWNGRADED: Invert 208.90m is an unvalidated synthetic offset (Z_bank - H) from 30m Copernicus DSM (uncertainty +/-1.5m due to railway embankment)."
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            77.2275429,
+            28.5796374
+          ],
+          [
+            77.2275106,
+            28.5793297
+          ],
+          [
+            77.2274783,
+            28.5790221
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "CS-06",
+      "properties": {
+        "cross_section_id": "CS-06",
+        "name": "South Extension Part-I / Barapullah Elevated Transit",
+        "reach_id": "reach_2_open_channel",
+        "chainage_m": 4550.0,
+        "latitude": 28.5793497,
+        "longitude": 77.2315949,
+        "geometry_type": "TRAPEZOIDAL_LINED",
+        "bottom_width_m": 16.0,
+        "top_width_m": 21.0,
+        "bank_height_m": 3.8,
+        "side_slope_h_v": 0.65,
+        "raw_dsm_elevation_m": 209.9,
+        "conditioned_bank_elevation_m": 212.34,
+        "derived_bed_elevation_m": 208.54,
+        "invert_provenance": "DERIVED (UNVALIDATED SYNTHETIC OFFSET: Conditioned bank elevation minus nominal depth H, +/-1.0m to +/-1.5m uncertainty)",
+        "dimensions_source": "Synthesized engineering transect. Previous citation ('PWD Barapullah Phase-I Drawings / DMP Reach E') does not publish tabular nallah cross-sections for this transect.",
+        "dimensions_provenance": "ASSUMED (Regularized engineering transect based on macro 6-18m range)",
+        "uncertainty_width_m": 0.5,
+        "uncertainty_depth_m": 0.3,
+        "uncertainty_bed_elevation_m": 1.5,
+        "manning_n_clean_design": 0.025,
+        "manning_n_silted_operational": 0.035,
+        "description": "Deep trapezoidal channel running parallel to Barapullah elevated expressway piers north of South Extension-I.",
+        "forensic_audit_verdict": "UNVERIFIED (Citations Erroneous); GEOMETRY IS ASSUMED / REGULARIZED",
+        "spatial_consistency_audit": "MATCH: Located on Kushak Nallah north of South Extension-I parallel to Barapullah elevated piers (28.57960N, 77.22550E).",
+        "invert_audit_note": "DOWNGRADED: Invert 208.30m is an unvalidated synthetic offset (Z_bank - H) from 30m Copernicus DSM (uncertainty +/-1.2m)."
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            77.2315822,
+            28.5796697
+          ],
+          [
+            77.2315949,
+            28.5793497
+          ],
+          [
+            77.2316076,
+            28.5790296
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "CS-07",
+      "properties": {
+        "cross_section_id": "CS-07",
+        "name": "Defence Colony Outfall / Barapullah Confluence Head",
+        "reach_id": "reach_2_open_channel",
+        "chainage_m": 5020.0,
+        "latitude": 28.5796725,
+        "longitude": 77.236328,
+        "geometry_type": "WIDE_TRAPEZOIDAL",
+        "bottom_width_m": 18.0,
+        "top_width_m": 24.0,
+        "bank_height_m": 4.2,
+        "side_slope_h_v": 0.7,
+        "raw_dsm_elevation_m": 208.48,
+        "conditioned_bank_elevation_m": 211.54,
+        "derived_bed_elevation_m": 207.34,
+        "invert_provenance": "DERIVED (UNVALIDATED SYNTHETIC OFFSET: Conditioned bank elevation minus nominal depth H, +/-1.0m to +/-1.5m uncertainty)",
+        "dimensions_source": "Synthesized engineering transect. Previous citation ('Delhi I&FC Outfall Schedule / DMP App. XII') does not tabulate 18.0m x 4.2m for the Kushak mouth. Confluence downstream (Barapullah main) widens to 30-40m and up to 100m.",
+        "dimensions_provenance": "ASSUMED (Regularized engineering transect based on macro 6-18m range)",
+        "uncertainty_width_m": 0.8,
+        "uncertainty_depth_m": 0.4,
+        "uncertainty_bed_elevation_m": 1.5,
+        "manning_n_clean_design": 0.025,
+        "manning_n_silted_operational": 0.035,
+        "description": "Major outfall junction where Kushak Nallah discharges into the main Barapullah Nala trunk.",
+        "forensic_audit_verdict": "UNVERIFIED (Citations Erroneous); GEOMETRY IS ASSUMED / REGULARIZED",
+        "spatial_consistency_audit": "MATCH: Located on Kushak Nallah mouth immediately upstream of confluence with Sunehri Nallah (28.57970N, 77.23630E).",
+        "invert_audit_note": "DOWNGRADED: Invert 207.34m is an unvalidated synthetic offset (Z_bank - H) from 30m Copernicus DSM (uncertainty +/-1.2m)."
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            77.2360847,
+            28.579928
+          ],
+          [
+            77.236328,
+            28.5796725
+          ],
+          [
+            77.2365713,
+            28.579417
+          ]
+        ]
+      }
+    }
+  ]
+}

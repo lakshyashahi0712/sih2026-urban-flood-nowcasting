@@ -1,0 +1,879 @@
+{
+ "provenance": {
+  "source_pdf": "data/delhi/raw/drainage/appendixxii.pdf (IIT Delhi DMP 2018 v5.1, APPENDIX XII: Longitudinal Profiles of drains in Barapullah basin)",
+  "downloaded_from": "https://ifc.delhi.gov.in/sites/default/files/inline-files/appendixxii.pdf",
+  "retrieved": "2026-09-11",
+  "extraction": "pdftotext -layout + python regex (scripts inline in session; raw parse: kushak_corridor_dmp2018_appendixxii_rawparse.json)",
+  "classification": "OFFICIAL / MODEL_INPUT - invert levels originate from I&FC departmental records as digitized by IIT Delhi; 'Old_Invert' = departmental record; 'New_Invert' = IITD-corrected (interpolation/smoothing per DMP Sections 2.4-2.5). NOT a field survey certificate. Vertical datum: MSL per table headers, GTS tie undocumented.",
+  "cross_section_semantics": "For Kushak Nalla Part II conduits the LOCATION column annotates: 'DrainWidth Is Top Width' (25.0 m) and 'Drain Dia Is Bottom Width' (10.0 m) => interpreted trapezoidal/box top width 25.0 m, bottom width 10.0 m, depth 7.354-7.554 m. Whether these are as-built clear dimensions or departmental template values remains UNVERIFIED (same 25.0/7.354 repeats across reaches)."
+ },
+ "ordered_longitudinal_profiles": {
+  "KushakNallah": [
+   {
+    "junction": "J_3055",
+    "top_msl_m": 224.195,
+    "old_invert_msl_m": 216.841,
+    "new_invert_msl_m": 216.841
+   },
+   {
+    "junction": "J_3115",
+    "top_msl_m": 223.946,
+    "old_invert_msl_m": 216.592,
+    "new_invert_msl_m": 216.592
+   },
+   {
+    "junction": "J_3168",
+    "top_msl_m": 222.746,
+    "old_invert_msl_m": 215.392,
+    "new_invert_msl_m": 215.392
+   },
+   {
+    "junction": "J_3258",
+    "top_msl_m": 221.846,
+    "old_invert_msl_m": 214.492,
+    "new_invert_msl_m": 214.492
+   },
+   {
+    "junction": "J_3303",
+    "top_msl_m": 221.646,
+    "old_invert_msl_m": 214.292,
+    "new_invert_msl_m": 214.292
+   },
+   {
+    "junction": "J_3369",
+    "top_msl_m": 221.042,
+    "old_invert_msl_m": 213.688,
+    "new_invert_msl_m": 213.688
+   },
+   {
+    "junction": "J_3406",
+    "top_msl_m": 220.075,
+    "old_invert_msl_m": 212.721,
+    "new_invert_msl_m": 212.721
+   },
+   {
+    "junction": "J_3455",
+    "top_msl_m": 220.005,
+    "old_invert_msl_m": 212.651,
+    "new_invert_msl_m": 212.651
+   },
+   {
+    "junction": "J_3525",
+    "top_msl_m": 219.951,
+    "old_invert_msl_m": 212.5973,
+    "new_invert_msl_m": 212.597
+   },
+   {
+    "junction": "J_3565",
+    "top_msl_m": 219.745,
+    "old_invert_msl_m": 212.3913,
+    "new_invert_msl_m": 212.391
+   },
+   {
+    "junction": "J_3614",
+    "top_msl_m": 219.643,
+    "old_invert_msl_m": 212.289,
+    "new_invert_msl_m": 212.289
+   },
+   {
+    "junction": "J_3781",
+    "top_msl_m": 219.575,
+    "old_invert_msl_m": 212.221,
+    "new_invert_msl_m": 212.221
+   },
+   {
+    "junction": "J_3849",
+    "top_msl_m": 219.508,
+    "old_invert_msl_m": 212.154,
+    "new_invert_msl_m": 212.154
+   },
+   {
+    "junction": "J_3918",
+    "top_msl_m": 219.416,
+    "old_invert_msl_m": 212.06165,
+    "new_invert_msl_m": 212.062
+   },
+   {
+    "junction": "J_4006",
+    "top_msl_m": 218.68,
+    "old_invert_msl_m": 211.3265,
+    "new_invert_msl_m": 211.326
+   },
+   {
+    "junction": "J_4088",
+    "top_msl_m": 218.645,
+    "old_invert_msl_m": 211.29135,
+    "new_invert_msl_m": 211.291
+   },
+   {
+    "junction": "J_4124",
+    "top_msl_m": 218.41,
+    "old_invert_msl_m": 211.0562,
+    "new_invert_msl_m": 211.056
+   },
+   {
+    "junction": "J_4152",
+    "top_msl_m": 218.375,
+    "old_invert_msl_m": 211.02105,
+    "new_invert_msl_m": 211.021
+   },
+   {
+    "junction": "J_4196",
+    "top_msl_m": 218.24,
+    "old_invert_msl_m": 210.8859,
+    "new_invert_msl_m": 210.886
+   },
+   {
+    "junction": "J_4261",
+    "top_msl_m": 218.205,
+    "old_invert_msl_m": 210.85075,
+    "new_invert_msl_m": 210.851
+   },
+   {
+    "junction": "J_4313",
+    "top_msl_m": 218.17,
+    "old_invert_msl_m": 210.8156,
+    "new_invert_msl_m": 210.816
+   },
+   {
+    "junction": "J_4387",
+    "top_msl_m": 218.154,
+    "old_invert_msl_m": 210.80045,
+    "new_invert_msl_m": 210.8
+   },
+   {
+    "junction": "J_4454",
+    "top_msl_m": 218.139,
+    "old_invert_msl_m": 210.785,
+    "new_invert_msl_m": 210.785
+   },
+   {
+    "junction": "J_4520",
+    "top_msl_m": 217.964,
+    "old_invert_msl_m": 210.61015,
+    "new_invert_msl_m": 210.61
+   },
+   {
+    "junction": "J_4555",
+    "top_msl_m": 217.329,
+    "old_invert_msl_m": 209.975,
+    "new_invert_msl_m": 209.975
+   },
+   {
+    "junction": "J_4567",
+    "top_msl_m": 217.294,
+    "old_invert_msl_m": 209.93985,
+    "new_invert_msl_m": 209.94
+   },
+   {
+    "junction": "J_4572",
+    "top_msl_m": 217.259,
+    "old_invert_msl_m": 209.9047,
+    "new_invert_msl_m": 209.905
+   },
+   {
+    "junction": "J_4611",
+    "top_msl_m": 217.224,
+    "old_invert_msl_m": 209.86955,
+    "new_invert_msl_m": 209.87
+   },
+   {
+    "junction": "J_4653",
+    "top_msl_m": 217.188,
+    "old_invert_msl_m": 209.8344,
+    "new_invert_msl_m": 209.834
+   },
+   {
+    "junction": "J_4674",
+    "top_msl_m": 217.153,
+    "old_invert_msl_m": 209.79925,
+    "new_invert_msl_m": 209.799
+   },
+   {
+    "junction": "J_4688",
+    "top_msl_m": 216.746,
+    "old_invert_msl_m": 209.392,
+    "new_invert_msl_m": 209.392
+   },
+   {
+    "junction": "J_4695",
+    "top_msl_m": 216.733,
+    "old_invert_msl_m": 209.521,
+    "new_invert_msl_m": 209.379
+   },
+   {
+    "junction": "J_4711",
+    "top_msl_m": 216.707,
+    "old_invert_msl_m": 209.488,
+    "new_invert_msl_m": 209.353
+   },
+   {
+    "junction": "J_4797",
+    "top_msl_m": 216.653,
+    "old_invert_msl_m": 209.4296667,
+    "new_invert_msl_m": 209.299
+   },
+   {
+    "junction": "J_4790",
+    "top_msl_m": 216.632,
+    "old_invert_msl_m": 209.2776667,
+    "new_invert_msl_m": 209.278
+   },
+   {
+    "junction": "J_4779",
+    "top_msl_m": 216.48,
+    "old_invert_msl_m": 209.1256667,
+    "new_invert_msl_m": 209.126
+   },
+   {
+    "junction": "J_4782",
+    "top_msl_m": 216.231,
+    "old_invert_msl_m": 209.2736667,
+    "new_invert_msl_m": 208.877
+   },
+   {
+    "junction": "J_4798",
+    "top_msl_m": 216.085,
+    "old_invert_msl_m": 209.2216667,
+    "new_invert_msl_m": 208.731
+   },
+   {
+    "junction": "J_4811",
+    "top_msl_m": 215.924,
+    "old_invert_msl_m": 208.5696667,
+    "new_invert_msl_m": 208.57
+   },
+   {
+    "junction": "J_4819",
+    "top_msl_m": 215.872,
+    "old_invert_msl_m": 208.5176667,
+    "new_invert_msl_m": 208.518
+   },
+   {
+    "junction": "J_4806",
+    "top_msl_m": 215.642,
+    "old_invert_msl_m": 208.2879667,
+    "new_invert_msl_m": 208.288
+   },
+   {
+    "junction": "J_4771",
+    "top_msl_m": 215.468,
+    "old_invert_msl_m": 208.1136667,
+    "new_invert_msl_m": 208.114
+   },
+   {
+    "junction": "J_4775",
+    "top_msl_m": 215.316,
+    "old_invert_msl_m": 207.9616667,
+    "new_invert_msl_m": 207.962
+   },
+   {
+    "junction": "J_4767",
+    "top_msl_m": 215.302,
+    "old_invert_msl_m": 207.9483667,
+    "new_invert_msl_m": 207.948
+   },
+   {
+    "junction": "J_4772",
+    "top_msl_m": 215.215,
+    "old_invert_msl_m": 207.8611667,
+    "new_invert_msl_m": 207.861
+   },
+   {
+    "junction": "J_4774",
+    "top_msl_m": 215.211,
+    "old_invert_msl_m": 207.8569667,
+    "new_invert_msl_m": 207.857
+   },
+   {
+    "junction": "J_4758",
+    "top_msl_m": 215.108,
+    "old_invert_msl_m": 207.7536667,
+    "new_invert_msl_m": 207.754
+   },
+   {
+    "junction": "J_4757",
+    "top_msl_m": 215.1,
+    "old_invert_msl_m": 207.7460667,
+    "new_invert_msl_m": 207.746
+   },
+   {
+    "junction": "J_4745",
+    "top_msl_m": 214.904,
+    "old_invert_msl_m": 207.5496667,
+    "new_invert_msl_m": 207.55
+   },
+   {
+    "junction": "J_4736",
+    "top_msl_m": 214.852,
+    "old_invert_msl_m": 207.4976667,
+    "new_invert_msl_m": 207.498
+   },
+   {
+    "junction": "J_4723",
+    "top_msl_m": 214.8,
+    "old_invert_msl_m": 207.4459667,
+    "new_invert_msl_m": 207.446
+   },
+   {
+    "junction": "J_4713",
+    "top_msl_m": 214.755,
+    "old_invert_msl_m": 207.4007667,
+    "new_invert_msl_m": 207.401
+   },
+   {
+    "junction": "J_4702",
+    "top_msl_m": 214.746,
+    "old_invert_msl_m": 207.3916667,
+    "new_invert_msl_m": 207.392
+   },
+   {
+    "junction": "J_4693",
+    "top_msl_m": 214.644,
+    "old_invert_msl_m": 207.2896667,
+    "new_invert_msl_m": 207.29
+   },
+   {
+    "junction": "J_4681",
+    "top_msl_m": 214.592,
+    "old_invert_msl_m": 207.2376667,
+    "new_invert_msl_m": 207.238
+   },
+   {
+    "junction": "J_4671",
+    "top_msl_m": 214.44,
+    "old_invert_msl_m": 207.0856667,
+    "new_invert_msl_m": 207.086
+   },
+   {
+    "junction": "J_4665",
+    "top_msl_m": 214.418,
+    "old_invert_msl_m": 207.0636667,
+    "new_invert_msl_m": 207.064
+   },
+   {
+    "junction": "J_4704",
+    "top_msl_m": 214.394,
+    "old_invert_msl_m": 207.0395667,
+    "new_invert_msl_m": 207.04
+   },
+   {
+    "junction": "J_4755",
+    "top_msl_m": 214.384,
+    "old_invert_msl_m": 207.0296667,
+    "new_invert_msl_m": 207.03
+   },
+   {
+    "junction": "J_4785",
+    "top_msl_m": 214.284,
+    "old_invert_msl_m": 207.0296667,
+    "new_invert_msl_m": 206.93
+   },
+   {
+    "junction": "J_4897",
+    "top_msl_m": 213.599,
+    "old_invert_msl_m": 207.0296667,
+    "new_invert_msl_m": 206.245
+   },
+   {
+    "junction": "J_4914",
+    "top_msl_m": 213.584,
+    "old_invert_msl_m": 207.0296667,
+    "new_invert_msl_m": 206.23
+   },
+   {
+    "junction": "J_5105",
+    "top_msl_m": 213.587,
+    "old_invert_msl_m": 206.033,
+    "new_invert_msl_m": 206.033
+   }
+  ],
+  "KushakNalla Part II": [
+   {
+    "junction": "J_5105",
+    "top_msl_m": 213.587,
+    "old_invert_msl_m": 206.033,
+    "new_invert_msl_m": 206.033
+   },
+   {
+    "junction": "J_5330",
+    "top_msl_m": 213.561,
+    "old_invert_msl_m": 206.033,
+    "new_invert_msl_m": 206.007
+   },
+   {
+    "junction": "J_5336",
+    "top_msl_m": 213.56,
+    "old_invert_msl_m": 206.033,
+    "new_invert_msl_m": 206.006
+   },
+   {
+    "junction": "J_5408",
+    "top_msl_m": 213.552,
+    "old_invert_msl_m": 206.033,
+    "new_invert_msl_m": 205.998
+   },
+   {
+    "junction": "J_5505",
+    "top_msl_m": 213.341,
+    "old_invert_msl_m": 205.987,
+    "new_invert_msl_m": 205.987
+   },
+   {
+    "junction": "J_5532",
+    "top_msl_m": 213.298,
+    "old_invert_msl_m": 205.944,
+    "new_invert_msl_m": 205.944
+   },
+   {
+    "junction": "J_5561",
+    "top_msl_m": 213.139,
+    "old_invert_msl_m": 205.785,
+    "new_invert_msl_m": 205.785
+   },
+   {
+    "junction": "J_5587",
+    "top_msl_m": 212.954,
+    "old_invert_msl_m": 205.6,
+    "new_invert_msl_m": 205.6
+   },
+   {
+    "junction": "J_5626",
+    "top_msl_m": 212.537,
+    "old_invert_msl_m": 205.183,
+    "new_invert_msl_m": 205.183
+   },
+   {
+    "junction": "J_5670",
+    "top_msl_m": 212.254,
+    "old_invert_msl_m": 204.9,
+    "new_invert_msl_m": 204.9
+   },
+   {
+    "junction": "J_5710",
+    "top_msl_m": 211.984,
+    "old_invert_msl_m": 204.63,
+    "new_invert_msl_m": 204.63
+   },
+   {
+    "junction": "J_5753",
+    "top_msl_m": 211.514,
+    "old_invert_msl_m": 204.16,
+    "new_invert_msl_m": 204.16
+   },
+   {
+    "junction": "J_5818",
+    "top_msl_m": 211.412,
+    "old_invert_msl_m": 204.058,
+    "new_invert_msl_m": 204.058
+   },
+   {
+    "junction": "J_5902",
+    "top_msl_m": 211.322,
+    "old_invert_msl_m": 203.968,
+    "new_invert_msl_m": 203.968
+   },
+   {
+    "junction": "J_5997",
+    "top_msl_m": 211.123,
+    "old_invert_msl_m": 203.77,
+    "new_invert_msl_m": 203.769
+   },
+   {
+    "junction": "J_6043",
+    "top_msl_m": 211.123,
+    "old_invert_msl_m": 203.77,
+    "new_invert_msl_m": 203.769
+   },
+   {
+    "junction": "J_6182",
+    "top_msl_m": 211.123,
+    "old_invert_msl_m": 203.77,
+    "new_invert_msl_m": 203.769
+   }
+  ],
+  "Kushak Nalla Part II": [
+   {
+    "junction": "J_6182",
+    "top_msl_m": 211.123,
+    "old_invert_msl_m": 203.77,
+    "new_invert_msl_m": 203.769
+   },
+   {
+    "junction": "J_6863",
+    "top_msl_m": 211.121,
+    "old_invert_msl_m": 203.77,
+    "new_invert_msl_m": 203.767
+   },
+   {
+    "junction": "J_6891",
+    "top_msl_m": 211.121,
+    "old_invert_msl_m": 203.77,
+    "new_invert_msl_m": 203.767
+   },
+   {
+    "junction": "J_6920",
+    "top_msl_m": 211.12,
+    "old_invert_msl_m": 203.77,
+    "new_invert_msl_m": 203.766
+   },
+   {
+    "junction": "J_6976",
+    "top_msl_m": 211.119,
+    "old_invert_msl_m": 203.77,
+    "new_invert_msl_m": 203.765
+   },
+   {
+    "junction": "J_7549",
+    "top_msl_m": 208.336,
+    "old_invert_msl_m": 210.01,
+    "new_invert_msl_m": 203.752
+   }
+  ],
+  "Kudesia Bagh Nallah": [
+   {
+    "junction": "J_9783",
+    "top_msl_m": 214.99,
+    "old_invert_msl_m": 0.0,
+    "new_invert_msl_m": 212.99
+   },
+   {
+    "junction": "J_10548",
+    "top_msl_m": 213.1,
+    "old_invert_msl_m": 0.0,
+    "new_invert_msl_m": 211.1
+   },
+   {
+    "junction": "J_10822",
+    "top_msl_m": 210.37,
+    "old_invert_msl_m": 0.0,
+    "new_invert_msl_m": 208.37
+   },
+   {
+    "junction": "J_10900",
+    "top_msl_m": 209.909,
+    "old_invert_msl_m": 0.0,
+    "new_invert_msl_m": 207.909
+   },
+   {
+    "junction": "J_11490",
+    "top_msl_m": 206.97,
+    "old_invert_msl_m": 204.97,
+    "new_invert_msl_m": 204.97
+   },
+   {
+    "junction": "J_12081",
+    "top_msl_m": 206.97,
+    "old_invert_msl_m": 204.97,
+    "new_invert_msl_m": 204.97
+   }
+  ]
+ },
+ "iitd_corrections": [
+  {
+   "section": "KushakNallah",
+   "junction": "J_4695",
+   "top_msl_m": 216.733,
+   "old_invert_msl_m": 209.521,
+   "new_invert_msl_m": 209.379,
+   "delta_m": -0.142
+  },
+  {
+   "section": "KushakNallah",
+   "junction": "J_4711",
+   "top_msl_m": 216.707,
+   "old_invert_msl_m": 209.488,
+   "new_invert_msl_m": 209.353,
+   "delta_m": -0.135
+  },
+  {
+   "section": "KushakNallah",
+   "junction": "J_4797",
+   "top_msl_m": 216.653,
+   "old_invert_msl_m": 209.4296667,
+   "new_invert_msl_m": 209.299,
+   "delta_m": -0.131
+  },
+  {
+   "section": "KushakNallah",
+   "junction": "J_4782",
+   "top_msl_m": 216.231,
+   "old_invert_msl_m": 209.2736667,
+   "new_invert_msl_m": 208.877,
+   "delta_m": -0.397
+  },
+  {
+   "section": "KushakNallah",
+   "junction": "J_4798",
+   "top_msl_m": 216.085,
+   "old_invert_msl_m": 209.2216667,
+   "new_invert_msl_m": 208.731,
+   "delta_m": -0.491
+  },
+  {
+   "section": "KushakNallah",
+   "junction": "J_4785",
+   "top_msl_m": 214.284,
+   "old_invert_msl_m": 207.0296667,
+   "new_invert_msl_m": 206.93,
+   "delta_m": -0.1
+  },
+  {
+   "section": "KushakNallah",
+   "junction": "J_4897",
+   "top_msl_m": 213.599,
+   "old_invert_msl_m": 207.0296667,
+   "new_invert_msl_m": 206.245,
+   "delta_m": -0.785
+  },
+  {
+   "section": "KushakNallah",
+   "junction": "J_4914",
+   "top_msl_m": 213.584,
+   "old_invert_msl_m": 207.0296667,
+   "new_invert_msl_m": 206.23,
+   "delta_m": -0.8
+  },
+  {
+   "section": "KushakNalla Part II",
+   "junction": "J_5330",
+   "top_msl_m": 213.561,
+   "old_invert_msl_m": 206.033,
+   "new_invert_msl_m": 206.007,
+   "delta_m": -0.026
+  },
+  {
+   "section": "KushakNalla Part II",
+   "junction": "J_5336",
+   "top_msl_m": 213.56,
+   "old_invert_msl_m": 206.033,
+   "new_invert_msl_m": 206.006,
+   "delta_m": -0.027
+  },
+  {
+   "section": "KushakNalla Part II",
+   "junction": "J_5408",
+   "top_msl_m": 213.552,
+   "old_invert_msl_m": 206.033,
+   "new_invert_msl_m": 205.998,
+   "delta_m": -0.035
+  },
+  {
+   "section": "Kushak Nalla Part II",
+   "junction": "J_6863",
+   "top_msl_m": 211.121,
+   "old_invert_msl_m": 203.77,
+   "new_invert_msl_m": 203.767,
+   "delta_m": -0.003
+  },
+  {
+   "section": "Kushak Nalla Part II",
+   "junction": "J_6891",
+   "top_msl_m": 211.121,
+   "old_invert_msl_m": 203.77,
+   "new_invert_msl_m": 203.767,
+   "delta_m": -0.003
+  },
+  {
+   "section": "Kushak Nalla Part II",
+   "junction": "J_6920",
+   "top_msl_m": 211.12,
+   "old_invert_msl_m": 203.77,
+   "new_invert_msl_m": 203.766,
+   "delta_m": -0.004
+  },
+  {
+   "section": "Kushak Nalla Part II",
+   "junction": "J_6976",
+   "top_msl_m": 211.119,
+   "old_invert_msl_m": 203.77,
+   "new_invert_msl_m": 203.765,
+   "delta_m": -0.005
+  },
+  {
+   "section": "Kushak Nalla Part II",
+   "junction": "J_7549",
+   "top_msl_m": 208.336,
+   "old_invert_msl_m": 210.01,
+   "new_invert_msl_m": 203.752,
+   "delta_m": -6.258
+  },
+  {
+   "section": "Kudesia Bagh Nallah",
+   "junction": "J_9783",
+   "top_msl_m": 214.99,
+   "old_invert_msl_m": 0.0,
+   "new_invert_msl_m": 212.99,
+   "delta_m": 212.99
+  },
+  {
+   "section": "Kudesia Bagh Nallah",
+   "junction": "J_10548",
+   "top_msl_m": 213.1,
+   "old_invert_msl_m": 0.0,
+   "new_invert_msl_m": 211.1,
+   "delta_m": 211.1
+  },
+  {
+   "section": "Kudesia Bagh Nallah",
+   "junction": "J_10822",
+   "top_msl_m": 210.37,
+   "old_invert_msl_m": 0.0,
+   "new_invert_msl_m": 208.37,
+   "delta_m": 208.37
+  },
+  {
+   "section": "Kudesia Bagh Nallah",
+   "junction": "J_10900",
+   "top_msl_m": 209.909,
+   "old_invert_msl_m": 0.0,
+   "new_invert_msl_m": 207.909,
+   "delta_m": 207.909
+  }
+ ],
+ "key_connectivity": {
+  "upstream_head": {
+   "junction": "J_3055",
+   "top": 224.195,
+   "invert": 216.841
+  },
+  "berral_shanti_path_barrel_join": {
+   "junction": "J_4771",
+   "top": 215.468,
+   "old": 208.1136667,
+   "new": 208.114,
+   "feed": "Berral - Kushak Nala Shanti Path Join (CIRCULAR DIA 0.45-0.9, IITD-derived inverts top-1.2m where old=0.0)"
+  },
+  "trunk_to_part2": {
+   "junction": "J_5105",
+   "invert": 206.033,
+   "via": "C_8966 RECT_CLOSED W=25.0 from J_4914"
+  },
+  "nauroji_nagar_inflow": {
+   "junction": "J_5670",
+   "invert": 204.9,
+   "note": "NAUROJI NAGAR NALLA shares J_5670 with KushakNalla Part II; NAUROJI junctions carried adverse old invert 215.33 corrected by IITD to 208.137-211.541"
+  },
+  "africa_avenue_terminus": {
+   "junction": "J_3141",
+   "invert": 217.133,
+   "note": "Africa Avenue A-E roadside RECT_CLOSE sewers (W 0.4-0.7) terminate at J_3141, which appears in NAUROJINAGAR NALLA section"
+  },
+  "part2_lower_and_outfall": {
+   "terminal": "J_7549",
+   "top": 208.336,
+   "old": 210.01,
+   "new": 203.752,
+   "note": "J_7549 is terminal in DMP Barapullah model (only C_10511 J_6976->J_7549). Old record 210.010 was ADVERSE; IITD corrected to 203.752."
+  }
+ },
+ "barapullah_trunk_link": {
+  "section": "Chirag Delhi To Defense Colony Nallah (DMP labels downstream conduit 'khushak nala')",
+  "conduits": [
+   {
+    "id": "C_923",
+    "reach": "J_1159->J_1175",
+    "type": "RECT_CLOSE",
+    "width_m": 33.0,
+    "depth_m": 4.048
+   },
+   {
+    "id": "C_931",
+    "reach": "J_1214->J_1227",
+    "type": "RECT_CLOSE",
+    "width_m": 22.0,
+    "depth_m": 3.798
+   },
+   {
+    "id": "C_932",
+    "reach": "J_1227->J_1239",
+    "type": "RECT_CLOSE",
+    "width_m": 24.0,
+    "depth_m": 3.288
+   },
+   {
+    "id": "C_933",
+    "reach": "J_1239->J_1260",
+    "type": "RECT_CLOSE",
+    "width_m": 24.0,
+    "depth_m": 2.642
+   },
+   {
+    "id": "C_934",
+    "reach": "J_1260->J_1267",
+    "type": "RECT_CLOSE",
+    "width_m": 24.0,
+    "depth_m": 2.262
+   },
+   {
+    "id": "C_935",
+    "reach": "J_1267->J_1269",
+    "type": "RECT_CLOSE",
+    "width_m": 24.0,
+    "depth_m": 2.548
+   },
+   {
+    "id": "C_9029/C_936",
+    "reach": "J_1269->J_1269",
+    "type": "RECT_CLOSE",
+    "width_m": 33.0,
+    "depth_m": 3.428,
+    "note": "start of open drain"
+   },
+   {
+    "id": "C_937",
+    "reach": "J_1269->J_1264",
+    "type": "RECT_CLOSE",
+    "width_m": 60.0,
+    "depth_m": 4.812,
+    "note": "labelled 'khushak nala', 'Outfall opint'; J_1264 = outfall node (no junction row)"
+   }
+  ],
+  "defence_colony_junction_example": {
+   "junction": "J_12646",
+   "top": 208.344,
+   "old": 206.289,
+   "new": 203.532
+  }
+ },
+ "cross_section_census_top": [
+  {
+   "type": "RECT_CLOSED",
+   "width_m": 25.0,
+   "depth_m": 7.354,
+   "bottom_m": 10.0,
+   "count": 25
+  },
+  {
+   "type": "RECT_CLOSED",
+   "width_m": 25.0,
+   "depth_m": 7.554,
+   "bottom_m": 10.0,
+   "count": 4
+  },
+  {
+   "type": "RECT_CLOSE",
+   "width_m": 19.0,
+   "depth_m": 2.01,
+   "bottom_m": 0.0,
+   "count": 7,
+   "section": "Chirag Delhi To Defense Colony Nallah"
+  },
+  {
+   "type": "RECT_CLOSED",
+   "width_m": 3.7,
+   "depth_m": 2.0,
+   "bottom_m": 0.0,
+   "count": 4,
+   "section": "Kudesia Bagh Nallah"
+  },
+  {
+   "type": "CIRCULAR",
+   "width_m": 1.0,
+   "depth_m": 0.0,
+   "dia_m": 0.45,
+   "count": 30,
+   "section": "street sewers (Kushak Lane / Maharaja Agrasen Marg / Berral)"
+  }
+ ]
+}

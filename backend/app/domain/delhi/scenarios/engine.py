@@ -88,7 +88,9 @@ SIM_MODEL = "SIMULATED_MODEL_OUTPUT"
 SIM_TRUTH = "SYNTHETIC_GROUND_TRUTH"
 
 _RUN_REGISTRY: Dict[str, dict] = {}
+_SCENARIO_PAYLOAD_CACHE: Dict[str, dict] = {}
 _SCENARIO_RUN_ROOT = Path(__file__).resolve().parents[5] / "data" / "delhi" / "derived" / "scenarios"
+_BUNDLED_SCENARIO_ROOT = Path(__file__).resolve().parents[3] / "data" / "scenarios"
 
 
 # ---------------------------------------------------------------------------
@@ -540,9 +542,18 @@ def run_scenario(scenario_id: str, seed: Optional[int] = None, member_index: Opt
     single member for others.
     """
     scenario = get_scenario(scenario_id)
-    seed = seed if seed is not None else scenario.seed
-    start_scenario_run(scenario_id, seed)
-    run_id = run_id_for(scenario_id, seed)
+    effective_seed = seed if seed is not None else scenario.seed
+    run_id = run_id_for(scenario_id, effective_seed)
+
+    # If default scenario configuration, return existing precomputed snapshot immediately
+    if member_index is None and (seed is None or seed == scenario.seed):
+        existing = load_scenario_result(run_id)
+        if existing is not None:
+            start_scenario_run(scenario_id, effective_seed)
+            set_run_status(run_id, "COMPLETED")
+            return existing
+
+    start_scenario_run(scenario_id, effective_seed)
     set_run_status(run_id, "RUNNING")
 
     try:
@@ -551,8 +562,8 @@ def run_scenario(scenario_id: str, seed: Optional[int] = None, member_index: Opt
             scale = member_scale_for(scenario, member_index)
             depths_m = [d * scale for d in depths]
             fields_m = [f * scale for f in fields]
-            result = _run_member(scenario_id, seed, member_index, depths_m, fields_m)
-            return _compose_result(scenario, seed, run_id, [result], depths, fields,
+            result = _run_member(scenario_id, effective_seed, member_index, depths_m, fields_m)
+            return _compose_result(scenario, effective_seed, run_id, [result], depths, fields,
                                    ensemble=False)
         members = []
         for m in range(scenario.ensemble_members):
@@ -676,15 +687,36 @@ def _compose_result(
 
 
 def _persist_result(payload: dict) -> None:
-    _SCENARIO_RUN_ROOT.mkdir(parents=True, exist_ok=True, mode=0o755)
-    path = _SCENARIO_RUN_ROOT / f"{payload['run_id']}.json"
-    path.write_text(json.dumps(payload, indent=2, ensure_ascii=False), encoding="utf-8")
+    _SCENARIO_PAYLOAD_CACHE[payload["run_id"]] = payload
+    try:
+        _SCENARIO_RUN_ROOT.mkdir(parents=True, exist_ok=True, mode=0o755)
+        path = _SCENARIO_RUN_ROOT / f"{payload['run_id']}.json"
+        path.write_text(json.dumps(payload, indent=2, ensure_ascii=False), encoding="utf-8")
+    except Exception:
+        pass
 
 
 def load_scenario_result(run_id: str) -> Optional[dict]:
+    if run_id in _SCENARIO_PAYLOAD_CACHE:
+        return _SCENARIO_PAYLOAD_CACHE[run_id]
+
+    bundled_path = _BUNDLED_SCENARIO_ROOT / f"{run_id}.json"
+    if bundled_path.exists():
+        try:
+            data = json.loads(bundled_path.read_text(encoding="utf-8"))
+            _SCENARIO_PAYLOAD_CACHE[run_id] = data
+            return data
+        except Exception:
+            pass
+
     path = _SCENARIO_RUN_ROOT / f"{run_id}.json"
     if path.exists():
-        return json.loads(path.read_text(encoding="utf-8"))
+        try:
+            data = json.loads(path.read_text(encoding="utf-8"))
+            _SCENARIO_PAYLOAD_CACHE[run_id] = data
+            return data
+        except Exception:
+            pass
     return None
 
 # Synthetic telemetry (internally consistent with scenario state; every
