@@ -91,6 +91,7 @@ const DelhiApp = () => {
     Record<string, { depth_cm: number; depth_m: number; flood_state: string }> | null
   >(null);
   const [evidenceOpen, setEvidenceOpen] = useState(false);
+  const [mobileDrawerExpanded, setMobileDrawerExpanded] = useState<boolean>(true);
 
   useEffect(() => {
     delhiApi.getDrainageGraph().then(setDrainageGraph).catch(() => setDrainageGraph(null));
@@ -187,7 +188,7 @@ const DelhiApp = () => {
         <div className="topbar-left">
           <div className="system-identity">
             <span className="system-mark">øy</span>
-            <span className="system-title text-2xl font-bold tracking-tight">URBAN FLOOD NOWCAST</span>
+            <span className="system-title">URBAN FLOOD NOWCAST</span>
           </div>
           <span className="topbar-sep">|</span>
           <div className="system-location">
@@ -325,7 +326,33 @@ const DelhiApp = () => {
         />
 
         {/* LEFT WORKSPACE OVERLAY: V1 control stack */}
-        <div className="map-left-overlay delhi-overlay">
+        <div className={`map-left-overlay delhi-overlay ${mobileDrawerExpanded ? 'drawer-expanded' : 'drawer-collapsed'}`}>
+          {/* Mobile Drawer Handle / Sticky Header */}
+          <div
+            className="drawer-handle-bar"
+            onClick={() => setMobileDrawerExpanded(prev => !prev)}
+            role="button"
+            tabIndex={0}
+            aria-expanded={mobileDrawerExpanded}
+            aria-label={mobileDrawerExpanded ? 'Collapse dashboard insights drawer' : 'Expand dashboard insights drawer'}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                setMobileDrawerExpanded(prev => !prev);
+              }
+            }}
+          >
+            <div className="drawer-pill-handle" />
+            <div className="drawer-title-row">
+              <span className="drawer-summary-text">
+                <span className="drawer-risk-dot" style={{ backgroundColor: banner.border || '#0284c7' }} />
+                {banner.text} • {maxDepthM !== null ? `${maxDepthM.toFixed(2)}m` : '0.00m'} Peak
+              </span>
+              <span className="drawer-toggle-btn">
+                {mobileDrawerExpanded ? 'Collapse ▾' : 'Insights ▴'}
+              </span>
+            </div>
+          </div>
           <div className="delhi-panel-scroll">
           {/* CONTROL CARD (V1): mode switcher + outlook controls in ONE card */}
           <div className="flood-timeline-panel">

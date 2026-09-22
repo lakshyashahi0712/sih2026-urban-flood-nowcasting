@@ -692,6 +692,16 @@
 }
 
 /* Scrollbars inside panel */
+.delhi-panel-scroll {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  overflow-x: hidden;
+}
+
 .delhi-panel-scroll::-webkit-scrollbar {
   width: 6px;
 }
@@ -706,9 +716,20 @@
   .delhi-overlay {
     width: 100%;
     max-width: 100%;
-    height: 55%;
+    height: auto;
+    max-height: 50dvh;
     top: auto;
     bottom: 0;
+    left: 0;
+    right: 0;
+    border-radius: 12px 12px 0 0;
+    box-shadow: 0 -4px 16px rgba(15, 23, 42, 0.2);
+    transition: max-height 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .delhi-overlay.drawer-collapsed {
+    max-height: 44px;
+    overflow: hidden;
   }
 
   .delhi-meta-grid {
@@ -723,6 +744,40 @@
     display: none;
   }
 }
+
+@media (max-width: 768px) {
+  .city-switch {
+    top: 62px;
+    left: 8px;
+    right: auto;
+    padding: 2px;
+    gap: 3px;
+  }
+
+  .city-btn {
+    padding: 4px 6px;
+    font-size: 9.5px;
+    min-height: 28px;
+    gap: 3px;
+  }
+
+  .city-tag {
+    font-size: 7.5px;
+    padding: 1px 3px;
+  }
+}
+
+@media (max-width: 400px) {
+  .city-btn {
+    padding: 3px 5px;
+    font-size: 8.5px;
+  }
+
+  .city-tag {
+    display: none;
+  }
+}
+
 
 /* ============================================================
    Replay workflow (28B): statuses, observations, timeline,

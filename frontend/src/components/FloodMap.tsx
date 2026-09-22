@@ -316,6 +316,7 @@ const FloodMap = () => {
   const [routeResponse, setRouteResponse] = useState<SafeRouteAPIResponse | null>(null);
   const [routeLoading, setRouteLoading] = useState<boolean>(false);
   const [routeError, setRouteError] = useState<string | null>(null);
+  const [mobileDrawerExpanded, setMobileDrawerExpanded] = useState<boolean>(true);
 
   const appModeRef = useRef<AppMode>('LIVE');
   appModeRef.current = appMode;
@@ -1616,7 +1617,7 @@ const FloodMap = () => {
         <div className="topbar-left">
           <div className="system-identity">
             <span className="system-mark">⛯</span>
-            <span className="system-title text-2xl font-bold tracking-tight">URBAN FLOOD NOWCAST</span>
+            <span className="system-title">URBAN FLOOD NOWCAST</span>
           </div>
           <span className="topbar-sep">|</span>
           <div className="system-location">
@@ -1723,7 +1724,34 @@ const FloodMap = () => {
         <div ref={mapContainerRef} className="map-viewport" />
 
         {/* LEFT WORKSPACE OVERLAY: STACK OF CONTROLS & STATUS PANELS */}
-        <div className="map-left-overlay">
+        <div className={`map-left-overlay ${mobileDrawerExpanded ? 'drawer-expanded' : 'drawer-collapsed'}`}>
+          {/* Mobile Drawer Handle / Sticky Header */}
+          <div
+            className="drawer-handle-bar"
+            onClick={() => setMobileDrawerExpanded(prev => !prev)}
+            role="button"
+            tabIndex={0}
+            aria-expanded={mobileDrawerExpanded}
+            aria-label={mobileDrawerExpanded ? 'Collapse dashboard insights drawer' : 'Expand dashboard insights drawer'}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                setMobileDrawerExpanded(prev => !prev);
+              }
+            }}
+          >
+            <div className="drawer-pill-handle" />
+            <div className="drawer-title-row">
+              <span className="drawer-summary-text">
+                <span className="drawer-risk-dot" style={{ backgroundColor: riskInfo.bannerBorder || '#0284c7' }} />
+                {riskInfo.text} • {Number(maxDepthM).toFixed(2)}m Peak
+              </span>
+              <span className="drawer-toggle-btn">
+                {mobileDrawerExpanded ? 'Collapse ▾' : 'Insights ▴'}
+              </span>
+            </div>
+          </div>
+
           {/* TIMELINE & SCENARIO CONTROLS */}
           <div className="flood-timeline-panel">
             {/* Mode Switcher */}
@@ -1775,6 +1803,7 @@ const FloodMap = () => {
                       if (historicalData) applyHistoricalStepToMap(0, historicalData);
                     }}
                     title="Jump to Start (08:30 IST)"
+                    aria-label="Jump to start timestep (08:30 IST)"
                   >
                     ⏮
                   </button>
@@ -1788,6 +1817,7 @@ const FloodMap = () => {
                       if (historicalData) applyHistoricalStepToMap(s, historicalData);
                     }}
                     title="Previous Timestep"
+                    aria-label="Previous timestep"
                   >
                     ◀
                   </button>
@@ -1806,6 +1836,7 @@ const FloodMap = () => {
                       }
                     }}
                     title={isPlaying ? 'Pause Replay' : 'Play Replay'}
+                    aria-label={isPlaying ? 'Pause historical replay' : 'Play historical replay'}
                   >
                     {isPlaying ? '⏸ Pause' : '▶ Play'}
                   </button>
@@ -1819,6 +1850,7 @@ const FloodMap = () => {
                       if (historicalData) applyHistoricalStepToMap(s, historicalData);
                     }}
                     title="Next Timestep"
+                    aria-label="Next timestep"
                   >
                     ▶
                   </button>
@@ -1831,6 +1863,7 @@ const FloodMap = () => {
                       if (historicalData) applyHistoricalStepToMap(5, historicalData);
                     }}
                     title="Jump to Cloudburst Peak (Step 6 / 13:30 IST)"
+                    aria-label="Jump to cloudburst peak (Step 6 / 13:30 IST)"
                   >
                     ⚡ Peak
                   </button>
@@ -2375,6 +2408,7 @@ const FloodMap = () => {
                   className="route-close-btn"
                   onClick={handleToggleRouting}
                   title="Exit Safe Routing Mode"
+                  aria-label="Exit Safe Routing Mode"
                 >
                   ✕
                 </button>
