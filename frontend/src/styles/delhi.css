@@ -55,6 +55,37 @@
   background: rgba(148, 163, 184, 0.28);
 }
 
+/* Evidence toggle button in topbar */
+.evidence-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(30, 41, 59, 0.85);
+  border: 1px solid var(--topbar-border, #334155);
+  border-radius: var(--radius-sm, 4px);
+  color: var(--topbar-text-muted, #94a3b8);
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  padding: 3px 8px;
+  min-height: 28px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  flex-shrink: 0;
+}
+
+.evidence-toggle:hover {
+  background: rgba(51, 65, 85, 0.9);
+  color: #ffffff;
+  border-color: #475569;
+}
+
+.evidence-toggle.active {
+  background: var(--accent-primary, #0284c7);
+  color: #ffffff;
+  border-color: #38bdf8;
+}
+
 /* Map workspace layout (mirrors FloodMap's .map-workspace) */
 .delhi-map-wrap {
   position: relative;
@@ -747,7 +778,7 @@
 
 @media (max-width: 768px) {
   .city-switch {
-    top: 62px;
+    top: 54px;
     left: 8px;
     right: auto;
     padding: 2px;
@@ -764,6 +795,16 @@
   .city-tag {
     font-size: 7.5px;
     padding: 1px 3px;
+  }
+
+  .evidence-toggle {
+    font-size: 9.5px;
+    padding: 2px 6px;
+    min-height: 26px;
+  }
+
+  .app-topbar .telemetry-info {
+    display: none !important;
   }
 }
 
