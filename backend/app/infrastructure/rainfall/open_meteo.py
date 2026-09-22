@@ -148,6 +148,68 @@ class OpenMeteoCache:
         """Retrieve stale cached data or fallback snapshot."""
         return self.get(allow_stale=True)
 
+    @property
+    def has_fresh_cache(self) -> bool:
+        """Whether a valid in-memory cache is present and within TTL."""
+        if self._data is None or self._timestamp is None:
+            return False
+        now = datetime.now(timezone.utc)
+        return (now - self._timestamp) <= timedelta(minutes=CACHE_TTL_MINUTES)
+
+    @property
+    def has_stale_cache(self) -> bool:
+        """Whether an in-memory cache is present but expired beyond TTL."""
+        if self._data is None or self._timestamp is None:
+            return False
+        return not self.has_fresh_cache
+
+    def get_status(self) -> dict:
+        """Return diagnostic status of the cache and currently available data."""
+        if self.has_fresh_cache:
+            cache_status = "LIVE"
+            provenance = getattr(self._data, "provenance", RainfallProvenance.NWP_FALLBACK)
+            prov_val = provenance.value if hasattr(provenance, "value") else str(provenance)
+            available_source = "IN_MEMORY_FRESH_CACHE"
+            is_stale = False
+        elif self.has_stale_cache:
+            cache_status = "STALE"
+            prov_val = getattr(RainfallProvenance, "FALLBACK_CACHED_FORECAST", RainfallProvenance.NWP_FALLBACK)
+            prov_val = prov_val.value if hasattr(prov_val, "value") else str(prov_val)
+            available_source = "IN_MEMORY_STALE_CACHE"
+            is_stale = True
+        elif self.has_fallback:
+            cache_status = "FALLBACK_SNAPSHOT"
+            prov_val = getattr(RainfallProvenance, "FALLBACK_CACHED_FORECAST", RainfallProvenance.NWP_FALLBACK)
+            prov_val = prov_val.value if hasattr(prov_val, "value") else str(prov_val)
+            available_source = "BUNDLED_FALLBACK_SNAPSHOT"
+            is_stale = True
+        else:
+            cache_status = "EMPTY"
+            prov_val = getattr(RainfallProvenance, "UNAVAILABLE", RainfallProvenance.NWP_FALLBACK)
+            prov_val = prov_val.value if hasattr(prov_val, "value") else str(prov_val)
+            available_source = "UNAVAILABLE"
+            is_stale = False
+
+        cached_at_iso = self._timestamp.isoformat() if self._timestamp else None
+        fallback_iso = (
+            self._fallback.acquired_at.isoformat()
+            if self._fallback and self._fallback.acquired_at
+            else None
+        )
+
+        return {
+            "cache_status": cache_status,
+            "cached_at": cached_at_iso,
+            "fallback_acquired_at": fallback_iso,
+            "effective_acquired_at": cached_at_iso or fallback_iso,
+            "cache_ttl_minutes": CACHE_TTL_MINUTES,
+            "has_fallback": self.has_fallback,
+            "fallback_available": self.has_fallback,
+            "available_source": available_source,
+            "provenance": prov_val,
+            "is_stale": is_stale,
+        }
+
 
 class OpenMeteoAdapter:
     """Adapter for fetching rainfall data from Open-Meteo API."""
@@ -160,6 +222,22 @@ class OpenMeteoAdapter:
     ) -> None:
         self.timeout = timeout
         self.cache = cache if cache is not None else OpenMeteoCache(fallback_path=fallback_path)
+        self.last_live_status: Optional[str] = None
+        self.last_live_error: Optional[str] = None
+        self.last_live_acquired_at: Optional[datetime] = None
+
+    def get_status(self) -> dict:
+        """Return diagnostic status of the adapter, cache, and fallback state."""
+        status = self.cache.get_status()
+        status.update({
+            "source": "open-meteo",
+            "source_type": SourceType.FORECAST.value if hasattr(SourceType.FORECAST, "value") else str(SourceType.FORECAST),
+            "resolution_minutes": 60,
+            "last_live_status": self.last_live_status,
+            "last_live_error": self.last_live_error,
+            "last_live_acquired_at": self.last_live_acquired_at.isoformat() if self.last_live_acquired_at else None,
+        })
+        return status
 
     async def fetch(self, use_cache: bool = False) -> RainfallSeries:
         """Fetch rainfall data from Open-Meteo API.
@@ -184,10 +262,15 @@ class OpenMeteoAdapter:
             # Try to get live data first
             try:
                 live_data = await self._fetch_live()
+                self.last_live_status = "SUCCESS"
+                self.last_live_error = None
+                self.last_live_acquired_at = live_data.acquired_at
                 # Update cache with fresh live data
                 self.cache.set(live_data)
                 return live_data
-            except Exception:
+            except Exception as e:
+                self.last_live_status = "RATE_LIMITED" if getattr(e, "status_code", None) == 429 else "FAILED"
+                self.last_live_error = str(e)
                 # Live failed, try to return cached data or bundled verified snapshot
                 cached = self.cache.get(allow_stale=True)
                 if cached is not None:
@@ -196,7 +279,16 @@ class OpenMeteoAdapter:
                 # No cache available, re-raise the exception
                 raise
         else:
-            return await self._fetch_live()
+            try:
+                live_data = await self._fetch_live()
+                self.last_live_status = "SUCCESS"
+                self.last_live_error = None
+                self.last_live_acquired_at = live_data.acquired_at
+                return live_data
+            except Exception as e:
+                self.last_live_status = "RATE_LIMITED" if getattr(e, "status_code", None) == 429 else "FAILED"
+                self.last_live_error = str(e)
+                raise
 
     async def _fetch_live(self) -> RainfallSeries:
         """Fetch live data from the API."""

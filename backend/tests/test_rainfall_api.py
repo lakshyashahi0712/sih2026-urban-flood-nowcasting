@@ -1,7 +1,7 @@
 """Tests for the rainfall API endpoints."""
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from unittest.mock import AsyncMock, patch
 import pytest
 from fastapi.testclient import TestClient
@@ -67,13 +67,173 @@ def test_get_mumbai_rainfall_success():
 
 
 def test_get_mumbai_rainfall_status_endpoint():
-    """Test the rainfall status endpoint."""
-    response = client.get("/rainfall/mumbai/status")
-    assert response.status_code == 200
-    data = response.json()
-    assert "cache_status" in data
-    assert "source" in data
-    assert data["source"] == "open-meteo"
+    """Test the rainfall status endpoint reports fallback state accurately on startup."""
+    adapter = get_adapter()
+    old_data = adapter.cache._data
+    old_ts = adapter.cache._timestamp
+    try:
+        adapter.cache._data = None
+        adapter.cache._timestamp = None
+        response = client.get("/rainfall/mumbai/status")
+        assert response.status_code == 200
+        data = response.json()
+        assert data["source"] == "open-meteo"
+        assert data["cache_status"] == "FALLBACK_SNAPSHOT"
+        assert data["provenance"] == "FALLBACK_CACHED_FORECAST"
+        assert data["available_source"] == "BUNDLED_FALLBACK_SNAPSHOT"
+        assert data["has_fallback"] is True
+        assert data["fallback_available"] is True
+        assert data["cached_at"] is None
+        assert data["fallback_acquired_at"] is not None
+        assert data["is_stale"] is True
+    finally:
+        adapter.cache._data = old_data
+        adapter.cache._timestamp = old_ts
+
+
+def test_mumbai_rainfall_status_reflects_live_fresh_cache():
+    """Test that /rainfall/mumbai/status reports LIVE and NWP_FALLBACK when fresh in-memory data is cached."""
+    adapter = get_adapter()
+    now = datetime.now(timezone.utc)
+    rec = RainfallRecord(
+        timestamp=now,
+        interval_end=now + timedelta(hours=1),
+        rainfall_mm=2.5,
+        source="open-meteo",
+        source_type=SourceType.FORECAST,
+        resolution_minutes=60,
+        acquired_at=now,
+        forecast_lead_minutes=0,
+        status=RainfallStatus.LIVE,
+        provenance=RainfallProvenance.NWP_FALLBACK,
+    )
+    live_series = RainfallSeries(
+        records=[rec],
+        source="open-meteo",
+        acquired_at=now,
+        provenance=RainfallProvenance.NWP_FALLBACK,
+    )
+
+    old_data = adapter.cache._data
+    old_ts = adapter.cache._timestamp
+    old_status = adapter.last_live_status
+    try:
+        adapter.cache.set(live_series)
+        adapter.last_live_status = "SUCCESS"
+
+        response = client.get("/rainfall/mumbai/status")
+        assert response.status_code == 200
+        data = response.json()
+        assert data["cache_status"] == "LIVE"
+        assert data["provenance"] == "NWP_FALLBACK"
+        assert data["available_source"] == "IN_MEMORY_FRESH_CACHE"
+        assert data["cached_at"] is not None
+        assert data["is_stale"] is False
+        assert data["last_live_status"] == "SUCCESS"
+    finally:
+        adapter.cache._data = old_data
+        adapter.cache._timestamp = old_ts
+        adapter.last_live_status = old_status
+
+
+def test_mumbai_rainfall_status_reflects_stale_memory_cache():
+    """Test that /rainfall/mumbai/status reports STALE and FALLBACK_CACHED_FORECAST when in-memory cache is expired."""
+    adapter = get_adapter()
+    past = datetime.now(timezone.utc) - timedelta(minutes=45)
+    rec = RainfallRecord(
+        timestamp=past,
+        interval_end=past + timedelta(hours=1),
+        rainfall_mm=1.0,
+        source="open-meteo",
+        source_type=SourceType.FORECAST,
+        resolution_minutes=60,
+        acquired_at=past,
+        forecast_lead_minutes=0,
+        status=RainfallStatus.LIVE,
+    )
+    series = RainfallSeries(records=[rec], source="open-meteo", acquired_at=past)
+
+    old_data = adapter.cache._data
+    old_ts = adapter.cache._timestamp
+    try:
+        adapter.cache.set(series)
+        # Manually backdate timestamp past TTL (30 min)
+        adapter.cache._timestamp = past
+
+        response = client.get("/rainfall/mumbai/status")
+        assert response.status_code == 200
+        data = response.json()
+        assert data["cache_status"] == "STALE"
+        assert data["provenance"] == "FALLBACK_CACHED_FORECAST"
+        assert data["available_source"] == "IN_MEMORY_STALE_CACHE"
+        assert data["is_stale"] is True
+        assert data["cached_at"] is not None
+    finally:
+        adapter.cache._data = old_data
+        adapter.cache._timestamp = old_ts
+
+
+def test_mumbai_rainfall_status_tracks_live_rate_limit():
+    """Test that status reflects RATE_LIMITED after an upstream 429 encountered during fetch."""
+    adapter = get_adapter()
+    mock_resp = patch("httpx.AsyncClient.get")
+    old_data = adapter.cache._data
+    old_ts = adapter.cache._timestamp
+    old_status = adapter.last_live_status
+    old_err = adapter.last_live_error
+    try:
+        adapter.cache._data = None
+        adapter.cache._timestamp = None
+
+        mock_obj = AsyncMock()
+        mock_obj.status_code = 429
+        mock_obj.text = '{"error": true, "reason": "Daily rate limit exceeded"}'
+
+        with patch("httpx.AsyncClient.get", return_value=mock_obj):
+            # Fetch engages fallback
+            resp = client.get("/rainfall/mumbai")
+            assert resp.status_code == 200
+            assert resp.json()["provenance"] == "FALLBACK_CACHED_FORECAST"
+
+        # Now check status endpoint
+        status_resp = client.get("/rainfall/mumbai/status")
+        assert status_resp.status_code == 200
+        sdata = status_resp.json()
+        assert sdata["cache_status"] == "FALLBACK_SNAPSHOT"
+        assert sdata["provenance"] == "FALLBACK_CACHED_FORECAST"
+        assert sdata["available_source"] == "BUNDLED_FALLBACK_SNAPSHOT"
+        assert sdata["last_live_status"] == "RATE_LIMITED"
+        assert "429" in sdata["last_live_error"]
+    finally:
+        adapter.cache._data = old_data
+        adapter.cache._timestamp = old_ts
+        adapter.last_live_status = old_status
+        adapter.last_live_error = old_err
+
+
+def test_mumbai_rainfall_status_empty_when_no_fallback():
+    """Test that status reports EMPTY and UNAVAILABLE when neither in-memory cache nor fallback snapshot exists."""
+    adapter = get_adapter()
+    old_data = adapter.cache._data
+    old_ts = adapter.cache._timestamp
+    old_fb = adapter.cache._fallback
+    try:
+        adapter.cache._data = None
+        adapter.cache._timestamp = None
+        adapter.cache._fallback = None
+
+        response = client.get("/rainfall/mumbai/status")
+        assert response.status_code == 200
+        data = response.json()
+        assert data["cache_status"] == "EMPTY"
+        assert data["provenance"] == "UNAVAILABLE"
+        assert data["available_source"] == "UNAVAILABLE"
+        assert data["has_fallback"] is False
+        assert data["fallback_available"] is False
+    finally:
+        adapter.cache._data = old_data
+        adapter.cache._timestamp = old_ts
+        adapter.cache._fallback = old_fb
 
 
 def test_get_mumbai_rainfall_error_returns_503():

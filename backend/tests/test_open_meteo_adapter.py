@@ -19,7 +19,7 @@ from app.domain.rainfall.exceptions import (
     RainfallAdapterEmptyForecast,
     RainfallAdapterInvalidTimestamp,
 )
-from app.domain.rainfall.models import RainfallProvenance, RainfallStatus, SourceType
+from app.domain.rainfall.models import RainfallProvenance, RainfallStatus, SourceType, RainfallRecord, RainfallSeries
 from app.infrastructure.rainfall.open_meteo import OpenMeteoAdapter, OpenMeteoCache
 
 
@@ -467,3 +467,98 @@ async def test_missing_fallback_file_raises_error():
     with patch.object(httpx.AsyncClient, "get", return_value=mock_response):
         with pytest.raises(RainfallAdapterHTTPError):
             await custom_adapter.fetch(use_cache=True)
+
+
+def test_cache_get_status_bundled_fallback(adapter):
+    """Test get_status reflects bundled fallback snapshot when in-memory cache is empty."""
+    status = adapter.cache.get_status()
+    assert status["cache_status"] == "FALLBACK_SNAPSHOT"
+    assert status["available_source"] == "BUNDLED_FALLBACK_SNAPSHOT"
+    assert status["provenance"] == RainfallProvenance.FALLBACK_CACHED_FORECAST.value
+    assert status["has_fallback"] is True
+    assert status["fallback_available"] is True
+    assert status["cached_at"] is None
+    assert status["fallback_acquired_at"] is not None
+    assert status["is_stale"] is True
+
+
+def test_cache_get_status_fresh_live_cache(adapter):
+    """Test get_status reflects fresh in-memory cache when populated."""
+    now = datetime.now(timezone.utc)
+    rec = RainfallRecord(
+        timestamp=now,
+        interval_end=now + timedelta(hours=1),
+        rainfall_mm=1.0,
+        source="open-meteo",
+        source_type=SourceType.FORECAST,
+        resolution_minutes=60,
+        acquired_at=now,
+        forecast_lead_minutes=0,
+        status=RainfallStatus.LIVE,
+        provenance=RainfallProvenance.NWP_FALLBACK,
+    )
+    series = RainfallSeries(records=[rec], source="open-meteo", acquired_at=now, provenance=RainfallProvenance.NWP_FALLBACK)
+    adapter.cache.set(series)
+
+    status = adapter.cache.get_status()
+    assert status["cache_status"] == "LIVE"
+    assert status["available_source"] == "IN_MEMORY_FRESH_CACHE"
+    assert status["provenance"] == RainfallProvenance.NWP_FALLBACK.value
+    assert status["cached_at"] is not None
+    assert status["is_stale"] is False
+
+
+def test_cache_get_status_stale_cache(adapter):
+    """Test get_status reflects stale in-memory cache when TTL is exceeded."""
+    past = datetime.now(timezone.utc) - timedelta(minutes=45)
+    rec = RainfallRecord(
+        timestamp=past,
+        interval_end=past + timedelta(hours=1),
+        rainfall_mm=1.0,
+        source="open-meteo",
+        source_type=SourceType.FORECAST,
+        resolution_minutes=60,
+        acquired_at=past,
+        forecast_lead_minutes=0,
+        status=RainfallStatus.LIVE,
+    )
+    series = RainfallSeries(records=[rec], source="open-meteo", acquired_at=past)
+    adapter.cache.set(series)
+    adapter.cache._timestamp = past  # Expire TTL
+
+    status = adapter.cache.get_status()
+    assert status["cache_status"] == "STALE"
+    assert status["available_source"] == "IN_MEMORY_STALE_CACHE"
+    assert status["provenance"] == RainfallProvenance.FALLBACK_CACHED_FORECAST.value
+    assert status["is_stale"] is True
+
+
+def test_cache_get_status_empty_unavailable():
+    """Test get_status reflects EMPTY and UNAVAILABLE when neither cache nor fallback exists."""
+    empty_cache = OpenMeteoCache(fallback_path=None)
+    status = empty_cache.get_status()
+    assert status["cache_status"] == "EMPTY"
+    assert status["available_source"] == "UNAVAILABLE"
+    assert status["provenance"] == RainfallProvenance.UNAVAILABLE.value
+    assert status["has_fallback"] is False
+    assert status["fallback_available"] is False
+
+
+@pytest.mark.asyncio
+async def test_adapter_get_status_tracks_live_cycle(adapter):
+    """Test OpenMeteoAdapter.get_status tracks live success and rate-limiting."""
+    # Before fetch
+    init_status = adapter.get_status()
+    assert init_status["last_live_status"] is None
+
+    # Simulate rate-limited fetch
+    mock_429 = Mock()
+    mock_429.status_code = 429
+    mock_429.text = '{"error": true, "reason": "Rate limited"}'
+    with patch.object(httpx.AsyncClient, "get", return_value=mock_429):
+        await adapter.fetch(use_cache=True)
+
+    status_429 = adapter.get_status()
+    assert status_429["last_live_status"] == "RATE_LIMITED"
+    assert "429" in status_429["last_live_error"]
+    assert status_429["provenance"] == RainfallProvenance.FALLBACK_CACHED_FORECAST.value
