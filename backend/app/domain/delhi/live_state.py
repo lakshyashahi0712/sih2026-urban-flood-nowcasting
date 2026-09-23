@@ -199,7 +199,8 @@ def _road_match_index():
     from rasterio.warp import transform as rio_transform
 
     seen_geo = set()
-    segments: List[dict] = []
+    deduped_edges = []
+    coords_pts = []
     for edge_key, edge in graph.edge_index.items():
         geo = edge.coords_4326
         gsig = (
@@ -212,10 +213,21 @@ def _road_match_index():
         ux0, uy0 = graph.node_xy[edge.u]
         ux1, uy1 = graph.node_xy[edge.v]
         mx, my = (ux0 + ux1) / 2.0, (uy0 + uy1) / 2.0
+        deduped_edges.append((edge_key, edge, geo))
+        coords_pts.extend([[float(ux0), float(uy0)], [float(mx), float(my)], [float(ux1), float(uy1)]])
+
+    all_near = (
+        cell_tree.query_ball_point(coords_pts, r=SAMPLE_RADIUS_M)
+        if cell_tree is not None and coords_pts
+        else [[]] * len(coords_pts)
+    )
+
+    segments: List[dict] = []
+    for i, (edge_key, edge, geo) in enumerate(deduped_edges):
         sample_cells = (
-            cells_near(float(ux0), float(uy0), SAMPLE_RADIUS_M)
-            + cells_near(float(mx), float(my), SAMPLE_RADIUS_M)
-            + cells_near(float(ux1), float(uy1), SAMPLE_RADIUS_M)
+            [int(c) for c in all_near[i * 3]]
+            + [int(c) for c in all_near[i * 3 + 1]]
+            + [int(c) for c in all_near[i * 3 + 2]]
         )
         segments.append({
             "edge_key": edge_key,
@@ -234,13 +246,25 @@ def _road_match_index():
     for node, edges in graph.adj.items():
         for e in edges:
             connection_names.setdefault(node, set()).add(e.name)
+
+    valid_junction_nodes = [
+        node for node, names in sorted(connection_names.items()) if len(names) >= 3
+    ]
+    j_pts = [
+        [float(graph.node_xy[n][0]), float(graph.node_xy[n][1])]
+        for n in valid_junction_nodes
+    ]
+    j_near = (
+        cell_tree.query_ball_point(j_pts, r=SAMPLE_RADIUS_M)
+        if cell_tree is not None and j_pts
+        else [[]] * len(j_pts)
+    )
+
     junctions: List[dict] = []
-    for node, names in sorted(connection_names.items()):
-        if len(names) < 3:
-            continue
+    for idx, node in enumerate(valid_junction_nodes):
         lon, lat = graph.node_lonlat[node]
-        ux, uy = graph.node_xy[node]
-        cells = cells_near(float(ux), float(uy), SAMPLE_RADIUS_M)
+        names = connection_names[node]
+        cells = [int(c) for c in j_near[idx]]
         junctions.append({
             "node_idx": node,
             "lonlat": [lon, lat],
