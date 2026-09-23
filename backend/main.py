@@ -79,8 +79,11 @@ app.add_middleware(
         "http://127.0.0.1:5173",
         "http://localhost:4173",
         "http://127.0.0.1:4173",
+        # Vercel production deployment
+        "https://sih2026-urban-flood-nowcasting.vercel.app",
         *_EXTRA_ORIGINS,
     ],
+    allow_origin_regex=r"^https:\/\/([a-zA-Z0-9_-]+\.)?vercel\.app$",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

@@ -120,6 +120,7 @@ const DelhiMap = ({
     historical_landmarks: true,
   });
   const [layerErrors, setLayerErrors] = useState<Record<string, string>>({});
+  const [layersOpen, setLayersOpen] = useState(false);
   const flowRef = useRef<MapFlowState | null>(flowState);
   flowRef.current = flowState;
   const pickRef = useRef<{
@@ -695,36 +696,61 @@ const DelhiMap = ({
         </div>
       )}
 
-      <div className="delhi-map-layers">
-        <div className="delhi-layers-title">LAYERS</div>
-        {LAYER_SPECS.map((spec) => (
-          <label key={spec.id} className="delhi-layer-row">
-            <input
-              type="checkbox"
-              checked={!!visible[spec.id]}
-              onChange={(e) =>
-                setVisible((v) => ({ ...v, [spec.id]: e.target.checked }))
-              }
-            />
-            <span
-              className="delhi-layer-swatch"
-              style={{
-                background:
-                  spec.type === 'fill' ? `${spec.color}55` : spec.color,
-              }}
-            />
-            <span className="delhi-layer-label">{spec.label}</span>
-          </label>
-        ))}
-        {Object.keys(layerErrors).length > 0 && (
-          <div className="delhi-layer-error">
-            {Object.entries(layerErrors).map(([id, msg]) => (
-              <div key={id}>
-                layer {id}: {msg}
-              </div>
-            ))}
+      <div className={`delhi-map-layers ${layersOpen ? 'expanded' : 'collapsed'}`}>
+        <div
+          className="delhi-layers-header"
+          onClick={() => setLayersOpen((v) => !v)}
+          role="button"
+          tabIndex={0}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              setLayersOpen((v) => !v);
+            }
+          }}
+          aria-expanded={layersOpen}
+        >
+          <div className="delhi-layers-title">
+            LAYERS ({LAYER_SPECS.filter((s) => visible[s.id]).length}/{LAYER_SPECS.length})
           </div>
-        )}
+          <button
+            type="button"
+            className="delhi-layers-toggle-btn"
+            aria-label={layersOpen ? 'Collapse layers list' : 'Expand layers list'}
+          >
+            {layersOpen ? '▾' : '▴'}
+          </button>
+        </div>
+        <div className="delhi-layers-content">
+          {LAYER_SPECS.map((spec) => (
+            <label key={spec.id} className="delhi-layer-row">
+              <input
+                type="checkbox"
+                checked={!!visible[spec.id]}
+                onChange={(e) =>
+                  setVisible((v) => ({ ...v, [spec.id]: e.target.checked }))
+                }
+              />
+              <span
+                className="delhi-layer-swatch"
+                style={{
+                  background:
+                    spec.type === 'fill' ? `${spec.color}55` : spec.color,
+                }}
+              />
+              <span className="delhi-layer-label">{spec.label}</span>
+            </label>
+          ))}
+          {Object.keys(layerErrors).length > 0 && (
+            <div className="delhi-layer-error">
+              {Object.entries(layerErrors).map(([id, msg]) => (
+                <div key={id}>
+                  layer {id}: {msg}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
       <div className="delhi-map-provenance">
         All layers are derived or documented evidence — geometry provenance is
