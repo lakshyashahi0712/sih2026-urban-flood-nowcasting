@@ -1747,10 +1747,10 @@
 /* Floating Safe Route HUD Panel (Top Right, next to Map controls) */
 .safe-route-hud-panel {
   position: absolute;
-  top: 14px;
+  top: 54px;
   right: 54px;
   width: 320px;
-  max-height: calc(100% - 28px);
+  max-height: calc(100% - 68px);
   background: #ffffff;
   border: 1px solid #cbd5e1;
   border-radius: 8px;
@@ -2139,6 +2139,80 @@
   border-width: 1.5px;
 }
 
+.route-pick-btn {
+  flex: 1;
+  background: #f8fafc;
+  border: 1px solid #cbd5e1;
+  border-radius: 4px;
+  padding: 5px 8px;
+  font-size: 0.625rem;
+  font-weight: 600;
+  color: #0369a1;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+  text-align: center;
+}
+
+.route-pick-btn:hover {
+  background: #e0f2fe;
+  border-color: #38bdf8;
+  color: #0284c7;
+}
+
+.route-pick-btn.active {
+  background: #0284c7;
+  border-color: #0369a1;
+  color: #ffffff;
+  box-shadow: 0 1px 3px rgba(2, 132, 199, 0.35);
+}
+
+.route-loading-spinner {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border: 2px solid #bae6fd;
+  border-top-color: #0284c7;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  flex-shrink: 0;
+}
+
+.loc-item.clickable {
+  background: transparent;
+  border: 1px solid transparent;
+  padding: 3px 6px;
+  border-radius: 4px;
+  cursor: pointer;
+  width: 100%;
+  text-align: left;
+  transition: background 0.15s ease;
+  font-family: inherit;
+}
+
+.loc-item.clickable:hover {
+  background: #f1f5f9;
+}
+
+.loc-item.clickable.picking {
+  background: #e0f2fe;
+  border-color: #0284c7;
+}
+
+.loc-pick-hint {
+  margin-left: auto;
+  font-size: 0.5625rem;
+  font-weight: 700;
+  color: #0284c7;
+  letter-spacing: 0.04em;
+}
+
+.route-retry-btn {
+  margin-left: 8px;
+  padding: 2px 8px;
+  font-size: 0.625rem;
+}
+
 /* Base Mobile Drawer Header (Hidden on Desktop) */
 .drawer-handle-bar {
   display: none;
@@ -2200,7 +2274,8 @@
   .safe-route-hud-panel {
     width: 290px;
     max-width: 38vw;
-    top: 10px;
+    top: 54px;
+    max-height: calc(100% - 68px);
     right: 50px;
   }
 
@@ -2667,9 +2742,9 @@
     right: 0;
     width: 100% !important;
     max-width: 100% !important;
-    max-height: 58dvh;
+    max-height: 54dvh;
     border-radius: 12px 12px 0 0;
-    z-index: var(--z-hud, 25);
+    z-index: 30;
     padding: 10px 12px max(12px, var(--safe-area-bottom, 12px));
     box-shadow: 0 -4px 20px rgba(15, 23, 42, 0.22);
   }
@@ -2692,9 +2767,10 @@
     font-size: 13px;
   }
 
-  .route-clear-btn, .route-exit-btn {
-    min-height: 40px;
-    font-size: 11px;
+  .route-clear-btn, .route-exit-btn, .route-pick-btn {
+    min-height: 38px;
+    font-size: 10.5px;
+    padding: 6px 4px;
   }
 
   /* Banner notices: docked above bottom drawer */

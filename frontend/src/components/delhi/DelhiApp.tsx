@@ -81,6 +81,8 @@ const DelhiApp = () => {
   }>({ origin: null, destination: null });
   const [routeResult, setRouteResult] = useState<SafeRouteResponse | null>(null);
   const [routeHudOpen, setRouteHudOpen] = useState(false);
+  const [routeLoading, setRouteLoading] = useState(false);
+  const [routeError, setRouteError] = useState<string | null>(null);
   const [drainageGraph, setDrainageGraph] = useState<DrainageGraphResponse | null>(null);
   const [surfaceHotspots, setSurfaceHotspots] = useState<SurfaceHotspot[]>([]);
   const [depthCells, setDepthCells] = useState<
@@ -142,15 +144,66 @@ const DelhiApp = () => {
       setRouteResult(null);
       setRoutePicks({ origin: null, destination: null });
       setRouteHudOpen(false);
+      setRouteLoading(false);
+      setRouteError(null);
     }
     if (next === 'LIVE') setRouteHudOpen(routePicks.origin !== null);
   };
 
-  const handleMapClick = (lonlat: [number, number]) => {
-    if (!routePick) return;
-    setRoutePicks((prev) => ({ ...prev, [routePick]: { coords: lonlat } }));
+  const fetchSafeRoute = useCallback(
+    async (origin: [number, number], destination: [number, number]) => {
+      setRouteLoading(true);
+      setRouteError(null);
+      try {
+        const departureHour = Math.max(0, HORIZONS.indexOf(horizon));
+        const res = await delhiApi.getSafeRoute({
+          origin,
+          destination,
+          mode: 'live',
+          departure_hour: departureHour,
+        });
+        setRouteResult(res);
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : 'Route calculation failed';
+        setRouteError(msg);
+        setRouteResult(null);
+      } finally {
+        setRouteLoading(false);
+      }
+    },
+    [horizon],
+  );
+
+  const handleExitRouting = useCallback(() => {
+    setRouteHudOpen(false);
     setRoutePick(null);
     setRouteResult(null);
+    setRouteError(null);
+    setRouteLoading(false);
+    setRoutePicks({ origin: null, destination: null });
+  }, []);
+
+  const handleMapClick = (lonlat: [number, number]) => {
+    if (!routePick) return;
+    if (routePick === 'origin') {
+      const newOrigin = { coords: lonlat };
+      setRoutePicks((prev) => ({ ...prev, origin: newOrigin }));
+      if (routePicks.destination) {
+        setRoutePick(null);
+        void fetchSafeRoute(lonlat, routePicks.destination.coords);
+      } else {
+        setRoutePick('destination');
+      }
+    } else if (routePick === 'destination') {
+      const newDest = { coords: lonlat };
+      setRoutePicks((prev) => ({ ...prev, destination: newDest }));
+      setRoutePick(null);
+      if (routePicks.origin) {
+        void fetchSafeRoute(routePicks.origin.coords, lonlat);
+      } else {
+        setRoutePick('origin');
+      }
+    }
   };
 
   // The active model state driving the hero card + map overlays.
@@ -493,7 +546,20 @@ const DelhiApp = () => {
                 className={`extent-btn routing-btn ${mode === 'LIVE' && routeHudOpen ? 'active' : ''}`}
                 onClick={() => {
                   if (mode !== 'LIVE') switchMode('LIVE');
-                  setRouteHudOpen((v) => (mode === 'LIVE' ? !v : true));
+                  setRouteHudOpen((open) => {
+                    const next = mode === 'LIVE' ? !open : true;
+                    if (next) {
+                      setMobileDrawerExpanded(false);
+                      if (!routePicks.origin) {
+                        setRoutePick('origin');
+                      } else if (!routePicks.destination) {
+                        setRoutePick('destination');
+                      }
+                    } else {
+                      handleExitRouting();
+                    }
+                    return next;
+                  });
                 }}
                 title="Toggle Flood-Safe Route Finder (click map origin & destination)"
               >
@@ -650,16 +716,19 @@ const DelhiApp = () => {
             picks={routePicks}
             routeResult={routeResult}
             pickTarget={routePick}
-            onExit={() => {
-              setRouteHudOpen(false);
-              setRoutePick(null);
-              setRouteResult(null);
-              setRoutePicks({ origin: null, destination: null });
-            }}
+            loading={routeLoading}
+            error={routeError}
+            onExit={handleExitRouting}
             onPick={(t) => setRoutePick(t)}
             onPreset={(o, d) => {
               setRoutePicks({ origin: { coords: o }, destination: { coords: d } });
               setRoutePick(null);
+              void fetchSafeRoute(o, d);
+            }}
+            onRetry={() => {
+              if (routePicks.origin && routePicks.destination) {
+                void fetchSafeRoute(routePicks.origin.coords, routePicks.destination.coords);
+              }
             }}
           />
         )}
@@ -781,16 +850,22 @@ const SafeRouteHud = ({
   picks,
   routeResult,
   pickTarget,
+  loading,
+  error,
   onExit,
   onPick,
   onPreset,
+  onRetry,
 }: {
   picks: { origin: RoutePickPoint | null; destination: RoutePickPoint | null };
   routeResult: SafeRouteResponse | null;
   pickTarget: 'origin' | 'destination' | null;
+  loading: boolean;
+  error: string | null;
   onExit: () => void;
   onPick: (t: 'origin' | 'destination') => void;
   onPreset: (o: [number, number], d: [number, number]) => void;
+  onRetry: () => void;
 }) => {
   const rec = routeResult?.recommended_route;
   return (
@@ -801,13 +876,23 @@ const SafeRouteHud = ({
           <span className="route-hud-title">FLOOD-SAFE ROUTE</span>
         </div>
         <div className="route-hud-actions">
+          {rec && (
+            <span className="route-status-badge status-safe">
+              EVALUATED
+            </span>
+          )}
           <button type="button" className="route-close-btn" onClick={onExit} title="Exit safe routing">
             ✕
           </button>
         </div>
       </div>
       <div className="route-step-banner">
-        {!picks.origin ? (
+        {loading ? (
+          <div className="step-prompt loading">
+            <span className="route-loading-spinner" />
+            <span>Computing flood-safe route along corridor…</span>
+          </div>
+        ) : !picks.origin ? (
           <div className="step-prompt">
             <span className="step-pin origin-pin">📍</span>
             <span>
@@ -823,26 +908,50 @@ const SafeRouteHud = ({
           </div>
         ) : (
           <div className="step-locations">
-            <div className="loc-item">
+            <button
+              type="button"
+              className={`loc-item clickable ${pickTarget === 'origin' ? 'picking' : ''}`}
+              onClick={() => onPick('origin')}
+              title="Click to re-pick origin on map"
+            >
               <span className="loc-dot origin" />
               <span className="loc-text">
                 {routeResult?.origin.snapped_road ||
                   `${picks.origin.coords[1].toFixed(4)}, ${picks.origin.coords[0].toFixed(4)}`}
               </span>
-            </div>
+              <span className="loc-pick-hint">{pickTarget === 'origin' ? 'PICKING…' : 'CHANGE'}</span>
+            </button>
             <div className="loc-arrow">↓</div>
-            <div className="loc-item">
+            <button
+              type="button"
+              className={`loc-item clickable ${pickTarget === 'destination' ? 'picking' : ''}`}
+              onClick={() => onPick('destination')}
+              title="Click to re-pick destination on map"
+            >
               <span className="loc-dot dest" />
               <span className="loc-text">
                 {routeResult?.destination.snapped_road ||
                   `${picks.destination.coords[1].toFixed(4)}, ${picks.destination.coords[0].toFixed(4)}`}
               </span>
-            </div>
+              <span className="loc-pick-hint">{pickTarget === 'destination' ? 'PICKING…' : 'CHANGE'}</span>
+            </button>
           </div>
         )}
       </div>
+
+      {error && !loading && (
+        <div className="route-error-banner">
+          <span>{error}</span>
+          <button type="button" className="delhi-btn route-retry-btn" onClick={onRetry}>
+            Retry
+          </button>
+        </div>
+      )}
+
       <div className="route-presets-section">
-        <div className="presets-label">PICK POINTS ON THE MAP {pickTarget ? '(PICKING…)' : ''}</div>
+        <div className="presets-label">
+          {pickTarget ? `CLICK MAP TO PLACE ${pickTarget.toUpperCase()}` : 'OR CHOOSE CORRIDOR PRESET:'}
+        </div>
         <div className="presets-buttons">
           <button
             type="button"
@@ -903,8 +1012,19 @@ const SafeRouteHud = ({
         <button type="button" className="route-clear-btn" onClick={onExit}>
           Exit Routing
         </button>
-        <button type="button" className="route-exit-btn" onClick={() => onPick('origin')}>
-          Re-pick Origin
+        <button
+          type="button"
+          className={`route-pick-btn ${pickTarget === 'origin' ? 'active' : ''}`}
+          onClick={() => onPick('origin')}
+        >
+          {pickTarget === 'origin' ? '● Picking Origin' : 'Pick Origin'}
+        </button>
+        <button
+          type="button"
+          className={`route-pick-btn ${pickTarget === 'destination' ? 'active' : ''}`}
+          onClick={() => onPick('destination')}
+        >
+          {pickTarget === 'destination' ? '● Picking Dest' : 'Pick Dest'}
         </button>
       </div>
     </div>
