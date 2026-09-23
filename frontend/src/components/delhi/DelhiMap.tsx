@@ -536,7 +536,47 @@ const DelhiMap = ({
       });
     }
     set('route-pins', { type: 'FeatureCollection', features: pinFeatures });
+
+    if (routeResult?.recommended_route?.geometry?.coordinates?.length) {
+      const coords = routeResult.recommended_route.geometry.coordinates;
+      let minLon = coords[0][0];
+      let maxLon = coords[0][0];
+      let minLat = coords[0][1];
+      let maxLat = coords[0][1];
+      for (let i = 1; i < coords.length; i++) {
+        const [lon, lat] = coords[i];
+        if (lon < minLon) minLon = lon;
+        if (lon > maxLon) maxLon = lon;
+        if (lat < minLat) minLat = lat;
+        if (lat > maxLat) maxLat = lat;
+      }
+      const isMobile = typeof window !== 'undefined' && window.innerWidth <= 768;
+      map.fitBounds(
+        [[minLon, minLat], [maxLon, maxLat]],
+        {
+          padding: isMobile
+            ? { top: 90, bottom: 270, left: 30, right: 30 }
+            : { top: 70, bottom: 70, left: 450, right: 360 },
+          maxZoom: 14.5,
+          duration: 900,
+        },
+      );
+    }
   }, [routeResult, routePicks, mapReady]);
+
+  // Set map cursor to crosshair while picking points
+  useEffect(() => {
+    const map = mapInstanceRef.current;
+    if (!map || !mapReady) return;
+    try {
+      const canvas = map.getCanvas();
+      if (canvas) {
+        canvas.style.cursor = pickTarget ? 'crosshair' : '';
+      }
+    } catch {
+      // ignore
+    }
+  }, [pickTarget, mapReady]);
 
   // Drainage graph + surface hotspot layers.
   useEffect(() => {
