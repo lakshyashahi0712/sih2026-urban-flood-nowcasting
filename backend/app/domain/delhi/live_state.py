@@ -35,7 +35,7 @@ import math
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from functools import lru_cache
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Sequence, Tuple
 
 import numpy as np
 from shapely.geometry import LineString, Point
@@ -152,6 +152,32 @@ def fetch_forecast_with_fallback(use_cache: bool = True) -> DelhiForecastFetch:
         fb.diagnostics = list(fetch.diagnostics) + fb.diagnostics
         return fb
     return fetch
+
+
+def client_forecast_fetch(mm_values: Sequence[float]) -> DelhiForecastFetch:
+    """A client-assisted Open-Meteo forecast fetch when cloud egress is rate-limited (HTTP 429)."""
+    now_utc = datetime.now(timezone.utc)
+    now_ist = now_utc.astimezone(IST)
+    hour_start = now_ist.replace(minute=0, second=0, microsecond=0)
+    bins = []
+    for i, mm in enumerate(mm_values[:4]):
+        t0 = hour_start + timedelta(hours=i)
+        bins.append(ForecastBin(
+            time_start=t0,
+            time_end=t0 + timedelta(hours=1),
+            depth_mm=float(mm),
+            provenance="DERIVED",
+        ))
+    return DelhiForecastFetch(
+        status="COMPUTED",
+        reference_point="Safdarjung (Open-Meteo NWP client-assisted ingest)",
+        latitude=28.5862,
+        longitude=77.2090,
+        acquired_at=now_utc,
+        bins=tuple(bins),
+        diagnostics=[],
+        source="Open-Meteo NWP hourly forecast (client-assisted ingest)",
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -666,7 +692,11 @@ _WHAT_IF_CACHE: Dict[str, dict] = {}
 _WHAT_IF_EDGE_DEPTHS_CACHE: Dict[str, Dict[str, Optional[float]]] = {}
 
 
-def get_cached_live_states(use_cache: bool = True, include_geo: bool = True) -> dict:
+def get_cached_live_states(
+    use_cache: bool = True,
+    include_geo: bool = True,
+    client_rainfall_mm: Optional[Sequence[float]] = None,
+) -> dict:
     """Live states keyed by forecast acquisition (deterministic; cached).
 
     The expensive part (surface structure + routing) is lru_cached in the
@@ -674,8 +704,12 @@ def get_cached_live_states(use_cache: bool = True, include_geo: bool = True) -> 
     repeated horizon clicks are instant.
     """
     global _LIVE_STATES_CACHE_KEY
-    fetch = fetch_forecast_with_fallback(use_cache=use_cache)
-    key = f"{fetch.acquired_at.isoformat() if fetch.acquired_at else 'none'}:{fetch.status}"
+    if client_rainfall_mm is not None and len(client_rainfall_mm) >= 4:
+        fetch = client_forecast_fetch(client_rainfall_mm)
+        key = f"client:{','.join(str(round(v, 2)) for v in client_rainfall_mm[:4])}"
+    else:
+        fetch = fetch_forecast_with_fallback(use_cache=use_cache)
+        key = f"{fetch.acquired_at.isoformat() if fetch.acquired_at else 'none'}:{fetch.status}"
     if use_cache and _LIVE_STATES_CACHE_KEY == key and "states" in _LIVE_STATES_CACHE:
         cached = _LIVE_STATES_CACHE["states"]
         if include_geo:

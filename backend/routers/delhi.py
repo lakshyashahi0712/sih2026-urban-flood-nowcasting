@@ -1479,6 +1479,10 @@ from backend.app.domain.delhi.live_state import (  # noqa: E402
 def get_live_state_v1(
     horizon: str = Query("ALL", description="NOW, +1h, +2h, +3h or ALL"),
     refresh: bool = Query(False, description="Re-acquire the rainfall forecast"),
+    client_rainfall_mm: Optional[str] = Query(
+        None,
+        description="Optional comma-separated hourly rainfall mm (NOW,+1h,+2h,+3h) when cloud egress is rate-limited",
+    ),
 ) -> Dict[str, Any]:
     """V1-style independent flood states for the forecast horizons.
 
@@ -1501,7 +1505,17 @@ def get_live_state_v1(
     if h_norm not in canonical:
         raise HTTPException(status_code=400, detail=f"horizon must be one of {list(HORIZON_LABELS)} or ALL")
     h = canonical[h_norm]
-    states = get_cached_live_states(use_cache=not refresh)
+
+    client_mm: Optional[List[float]] = None
+    if client_rainfall_mm:
+        try:
+            parsed = [float(x.strip()) for x in client_rainfall_mm.split(",")]
+            if len(parsed) >= 4 and all(v >= 0 for v in parsed[:4]):
+                client_mm = parsed[:4]
+        except Exception:
+            client_mm = None
+
+    states = get_cached_live_states(use_cache=not refresh, client_rainfall_mm=client_mm)
     if h == "ALL":
         return states
     for i, label in enumerate(HORIZON_LABELS):

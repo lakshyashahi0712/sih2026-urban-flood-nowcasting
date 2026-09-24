@@ -9,6 +9,7 @@ import ScenarioPanel from './ScenarioPanel';
 import LivePanel from './LivePanel';
 import {
   delhiApi,
+  fetchClientNwpRainfall,
   type DrainageGraphResponse,
   type LiveStateResponse,
   type SafeRouteResponse,
@@ -107,7 +108,21 @@ const DelhiApp = ({ theme }: { theme?: MapTheme } = {}) => {
     setLiveError(null);
     delhiApi
       .getLiveState(refresh)
-      .then(setLiveState)
+      .then(async (res) => {
+        if (res.rainfall_status === 'SYNTHETIC_FALLBACK') {
+          try {
+            const clientMm = await fetchClientNwpRainfall();
+            if (clientMm && clientMm.length === 4) {
+              const liveRes = await delhiApi.getLiveState(refresh, 'ALL', clientMm);
+              setLiveState(liveRes);
+              return;
+            }
+          } catch {
+            // Gracefully keep server fallback response
+          }
+        }
+        setLiveState(res);
+      })
       .catch((err) => setLiveError(err instanceof Error ? err.message : 'live state unavailable'))
       .finally(() => setLiveLoading(false));
   }, []);

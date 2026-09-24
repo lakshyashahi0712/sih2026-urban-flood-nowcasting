@@ -401,6 +401,41 @@ async function getJson<T>(path: string, signal?: AbortSignal): Promise<T> {
   return (await res.json()) as T;
 }
 
+export async function fetchClientNwpRainfall(signal?: AbortSignal): Promise<number[] | null> {
+  try {
+    const res = await fetch(
+      'https://api.open-meteo.com/v1/forecast?latitude=28.5862&longitude=77.2090&hourly=precipitation&forecast_days=2&timezone=Asia%2FKolkata',
+      { signal },
+    );
+    if (!res.ok) return null;
+    const data = await res.json();
+    const times: string[] = data?.hourly?.time || [];
+    const precip: (number | null)[] = data?.hourly?.precipitation || [];
+    if (!times.length || !precip.length) return null;
+
+    const pad = (n: number) => String(n).padStart(2, '0');
+    const istOffset = 5.5 * 60 * 60 * 1000;
+    const istDate = new Date(Date.now() + istOffset);
+    const hourStr = `${istDate.getUTCFullYear()}-${pad(istDate.getUTCMonth() + 1)}-${pad(istDate.getUTCDate())}T${pad(istDate.getUTCHours())}:00`;
+
+    let idx = times.indexOf(hourStr);
+    if (idx === -1) {
+      idx = times.findIndex((t) => t >= hourStr);
+    }
+    if (idx === -1) return null;
+
+    const mm: number[] = [];
+    for (let i = 0; i < 4; i++) {
+      const pIdx = idx + i;
+      const val = pIdx < precip.length ? precip[pIdx] : 0;
+      mm.push(typeof val === 'number' && val >= 0 ? Number(val.toFixed(2)) : 0);
+    }
+    return mm;
+  } catch {
+    return null;
+  }
+}
+
 export const delhiApi = {
   getStatus: (signal?: AbortSignal) => getJson<DelhiStatus>('/api/delhi/status', signal),
   getEnsemble: (signal?: AbortSignal) => getJson<EnsembleResponse>('/api/delhi/ensemble', signal),
@@ -448,11 +483,18 @@ export const delhiApi = {
   },
   getModelScience: (signal?: AbortSignal) =>
     getJson<ModelScienceResponse>('/api/delhi/model-science', signal),
-  getLiveState: (refresh = false, horizon = 'ALL', signal?: AbortSignal) =>
-    getJson<LiveStateResponse>(
-      `/api/delhi/live-state?horizon=${encodeURIComponent(horizon)}${refresh ? '&refresh=true' : ''}`,
-      signal,
-    ),
+  getLiveState: (
+    refresh = false,
+    horizon = 'ALL',
+    clientRainfallMm?: number[],
+    signal?: AbortSignal,
+  ) => {
+    let url = `/api/delhi/live-state?horizon=${encodeURIComponent(horizon)}${refresh ? '&refresh=true' : ''}`;
+    if (clientRainfallMm && clientRainfallMm.length === 4) {
+      url += `&client_rainfall_mm=${clientRainfallMm.join(',')}`;
+    }
+    return getJson<LiveStateResponse>(url, signal);
+  },
   getWhatIf: (rainfallMmH: number, signal?: AbortSignal) =>
     getJson<WhatIfResponse>(
       `/api/delhi/scenario/what-if?rainfall_mm_h=${rainfallMmH}`,
