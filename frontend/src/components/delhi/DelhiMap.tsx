@@ -9,6 +9,7 @@ import {
   type SurfaceHotspot,
 } from '../../api/delhi';
 import RainOverlay from './RainOverlay';
+import { getBasemapStyle, type MapTheme } from '../../config/mapStyles';
 
 // Kushak-Barapullah corridor, South Delhi.
 const DELHI_CENTER: [number, number] = [77.2265, 28.5595];
@@ -95,6 +96,7 @@ const DelhiMap = ({
   depthPolygons = null,
   scenarioRoadDepths = null,
   streetRisk = null,
+  theme,
 }: {
   flowState: MapFlowState | null;
   routeResult?: SafeRouteResponse | null;
@@ -108,6 +110,7 @@ const DelhiMap = ({
   depthPolygons?: { type: string; features: unknown[] } | null;
   scenarioRoadDepths?: Record<string, { depth_cm: number; depth_m: number; flood_state: string }> | null;
   streetRisk?: { roads_geojson: { type: string; features: unknown[] }; intersections_geojson: { type: string; features: unknown[] } } | null;
+  theme?: MapTheme;
 }) => {
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<MapLibreMap | null>(null);
@@ -121,6 +124,12 @@ const DelhiMap = ({
   });
   const [layerErrors, setLayerErrors] = useState<Record<string, string>>({});
   const [layersOpen, setLayersOpen] = useState(false);
+  const initialThemeOnMount = useRef(theme);
+  const geoLayerCacheRef = useRef<Record<string, GeoLayerResponse>>({});
+  const visibleRef = useRef(visible);
+  visibleRef.current = visible;
+  const popupRefLocal = useRef<Popup | null>(null);
+
   const flowRef = useRef<MapFlowState | null>(flowState);
   flowRef.current = flowState;
   const pickRef = useRef<{
@@ -131,34 +140,37 @@ const DelhiMap = ({
   const segmentClickRef = useRef(onSegmentClick);
   segmentClickRef.current = onSegmentClick;
 
-  useEffect(() => {
-    if (!mapContainerRef.current || mapInstanceRef.current) return;
+  const routeResultRef = useRef(routeResult);
+  routeResultRef.current = routeResult;
+  const routePicksRef = useRef(routePicks);
+  routePicksRef.current = routePicks;
+  const drainageGraphRef = useRef(drainageGraph);
+  drainageGraphRef.current = drainageGraph;
+  const surfaceHotspotsRef = useRef(surfaceHotspots);
+  surfaceHotspotsRef.current = surfaceHotspots;
+  const depthCellsRef = useRef(depthCells);
+  depthCellsRef.current = depthCells;
+  const depthPolygonsRef = useRef(depthPolygons);
+  depthPolygonsRef.current = depthPolygons;
+  const scenarioRoadDepthsRef = useRef(scenarioRoadDepths);
+  scenarioRoadDepthsRef.current = scenarioRoadDepths;
+  const streetRiskRef = useRef(streetRisk);
+  streetRiskRef.current = streetRisk;
 
-    const newMap = new MapLibreMap({
-      container: mapContainerRef.current,
-      style: 'https://tiles.openfreemap.org/styles/liberty',
-      center: DELHI_CENTER,
-      zoom: DELHI_ZOOM,
-    });
-    newMap.addControl(new NavigationControl({ showCompass: false }), 'top-right');
-    mapInstanceRef.current = newMap;
-    // V1 convention: expose the map instance for extent-control flyTo.
-    (window as unknown as { map?: MapLibreMap }).map = newMap;
-    newMap.on('error', (e) => {
-      // Surface style/source errors instead of silently dropping layers.
-      console.error('[delhi-map]', (e as unknown as { error?: Error }).error?.message || e);
-    });
-
-    newMap.on('load', async () => {
-      for (const spec of LAYER_SPECS) {
-        newMap.addSource(`${SOURCE_PREFIX}${spec.id}`, {
+  const setupAnalyticalLayers = (map: MapLibreMap) => {
+    for (const spec of LAYER_SPECS) {
+      if (!map.getSource(`${SOURCE_PREFIX}${spec.id}`)) {
+        map.addSource(`${SOURCE_PREFIX}${spec.id}`, {
           type: 'geojson',
           data: { type: 'FeatureCollection', features: [] },
         });
-        const sourceId = `${SOURCE_PREFIX}${spec.id}`;
+      }
+      const sourceId = `${SOURCE_PREFIX}${spec.id}`;
+      const layerId = `layer-${spec.id}`;
+      if (!map.getLayer(layerId)) {
         if (spec.type === 'fill') {
-          newMap.addLayer({
-            id: `layer-${spec.id}`,
+          map.addLayer({
+            id: layerId,
             type: 'fill',
             source: sourceId,
             paint: {
@@ -167,8 +179,8 @@ const DelhiMap = ({
             },
           });
         } else if (spec.type === 'line') {
-          newMap.addLayer({
-            id: `layer-${spec.id}`,
+          map.addLayer({
+            id: layerId,
             type: 'line',
             source: sourceId,
             paint: {
@@ -178,8 +190,8 @@ const DelhiMap = ({
             },
           });
         } else {
-          newMap.addLayer({
-            id: `layer-${spec.id}`,
+          map.addLayer({
+            id: layerId,
             type: 'circle',
             source: sourceId,
             paint: {
@@ -192,11 +204,13 @@ const DelhiMap = ({
           });
         }
       }
+    }
 
-      // V1 layer order: modelled flood DEPTH fill goes UNDER the street
-      // corridors, junction markers and routes — never on top of them.
-      newMap.addSource('flood-depth-polygons', { type: 'geojson', data: { ...EMPTY_FC } });
-      newMap.addLayer({
+    if (!map.getSource('flood-depth-polygons')) {
+      map.addSource('flood-depth-polygons', { type: 'geojson', data: { ...EMPTY_FC } });
+    }
+    if (!map.getLayer('flood-depth-polygons')) {
+      map.addLayer({
         id: 'flood-depth-polygons',
         type: 'fill',
         source: 'flood-depth-polygons',
@@ -205,8 +219,9 @@ const DelhiMap = ({
           'fill-opacity': 0.85,
         },
       });
-      // V1 water perimeter edge (subtle white outline above the fill).
-      newMap.addLayer({
+    }
+    if (!map.getLayer('flood-depth-outline')) {
+      map.addLayer({
         id: 'flood-depth-outline',
         type: 'line',
         source: 'flood-depth-polygons',
@@ -216,18 +231,17 @@ const DelhiMap = ({
           'line-opacity': 0.35,
         },
       });
+    }
 
-      // Safe-routing layers (after evidence layers so routes sit on top).
-      // Color-only is never the sole encoding: recommended is thick + white
-      // cased, alternative is dashed, elevated solid amber, unknown dotted.
-      newMap.addSource('route-recommended', { type: 'geojson', data: { ...EMPTY_FC } });
-      newMap.addSource('route-alternative', { type: 'geojson', data: { ...EMPTY_FC } });
-      newMap.addSource('route-risk-elevated', { type: 'geojson', data: { ...EMPTY_FC } });
-      newMap.addSource('route-risk-unknown', { type: 'geojson', data: { ...EMPTY_FC } });
-      newMap.addSource('street-risk-roads', { type: 'geojson', data: { ...EMPTY_FC } });
-      newMap.addSource('street-risk-junctions', { type: 'geojson', data: { ...EMPTY_FC } });
-      // V1 road-risk styling: risk-colored corridors + junction markers.
-      newMap.addLayer({
+    if (!map.getSource('route-recommended')) map.addSource('route-recommended', { type: 'geojson', data: { ...EMPTY_FC } });
+    if (!map.getSource('route-alternative')) map.addSource('route-alternative', { type: 'geojson', data: { ...EMPTY_FC } });
+    if (!map.getSource('route-risk-elevated')) map.addSource('route-risk-elevated', { type: 'geojson', data: { ...EMPTY_FC } });
+    if (!map.getSource('route-risk-unknown')) map.addSource('route-risk-unknown', { type: 'geojson', data: { ...EMPTY_FC } });
+    if (!map.getSource('street-risk-roads')) map.addSource('street-risk-roads', { type: 'geojson', data: { ...EMPTY_FC } });
+    if (!map.getSource('street-risk-junctions')) map.addSource('street-risk-junctions', { type: 'geojson', data: { ...EMPTY_FC } });
+
+    if (!map.getLayer('street-risk-roads')) {
+      map.addLayer({
         id: 'street-risk-roads',
         type: 'line',
         source: 'street-risk-roads',
@@ -251,7 +265,10 @@ const DelhiMap = ({
           'line-opacity': 0.95,
         },
       });
-      newMap.addLayer({
+    }
+
+    if (!map.getLayer('street-risk-junctions')) {
+      map.addLayer({
         id: 'street-risk-junctions',
         type: 'circle',
         source: 'street-risk-junctions',
@@ -276,14 +293,19 @@ const DelhiMap = ({
           'circle-opacity': 0.95,
         },
       });
-      newMap.addSource('route-pins', { type: 'geojson', data: { ...EMPTY_FC } });
-      newMap.addLayer({
+    }
+
+    if (!map.getSource('route-pins')) map.addSource('route-pins', { type: 'geojson', data: { ...EMPTY_FC } });
+    if (!map.getLayer('route-risk-elevated')) {
+      map.addLayer({
         id: 'route-risk-elevated',
         type: 'line',
         source: 'route-risk-elevated',
         paint: { 'line-color': '#d97706', 'line-width': 7, 'line-opacity': 0.55 },
       });
-      newMap.addLayer({
+    }
+    if (!map.getLayer('route-risk-unknown')) {
+      map.addLayer({
         id: 'route-risk-unknown',
         type: 'line',
         source: 'route-risk-unknown',
@@ -294,31 +316,40 @@ const DelhiMap = ({
           'line-dasharray': [1.5, 2],
         },
       });
-      newMap.addLayer({
+    }
+    if (!map.getLayer('route-alternative')) {
+      map.addLayer({
         id: 'route-alternative',
         type: 'line',
         source: 'route-alternative',
         layout: { 'line-cap': 'round', 'line-join': 'round' },
         paint: { 'line-color': '#475569', 'line-width': 4, 'line-dasharray': [2, 2] },
       });
-      newMap.addLayer({
+    }
+    if (!map.getLayer('route-recommended-casing')) {
+      map.addLayer({
         id: 'route-recommended-casing',
         type: 'line',
         source: 'route-recommended',
         layout: { 'line-cap': 'round', 'line-join': 'round' },
         paint: { 'line-color': '#ffffff', 'line-width': 9, 'line-opacity': 0.9 },
       });
-      newMap.addLayer({
+    }
+    if (!map.getLayer('route-recommended')) {
+      map.addLayer({
         id: 'route-recommended',
         type: 'line',
         source: 'route-recommended',
         layout: { 'line-cap': 'round', 'line-join': 'round' },
         paint: { 'line-color': '#1d4ed8', 'line-width': 5 },
       });
-      newMap.addSource('drainage-nodes', { type: 'geojson', data: { ...EMPTY_FC } });
-      newMap.addSource('drainage-edges', { type: 'geojson', data: { ...EMPTY_FC } });
-      newMap.addSource('surface-hotspots', { type: 'geojson', data: { ...EMPTY_FC } });
-      newMap.addLayer({
+    }
+
+    if (!map.getSource('drainage-nodes')) map.addSource('drainage-nodes', { type: 'geojson', data: { ...EMPTY_FC } });
+    if (!map.getSource('drainage-edges')) map.addSource('drainage-edges', { type: 'geojson', data: { ...EMPTY_FC } });
+    if (!map.getSource('surface-hotspots')) map.addSource('surface-hotspots', { type: 'geojson', data: { ...EMPTY_FC } });
+    if (!map.getLayer('drainage-edges')) {
+      map.addLayer({
         id: 'drainage-edges',
         type: 'line',
         source: 'drainage-edges',
@@ -329,7 +360,9 @@ const DelhiMap = ({
           'line-opacity': 0.75,
         },
       });
-      newMap.addLayer({
+    }
+    if (!map.getLayer('drainage-nodes')) {
+      map.addLayer({
         id: 'drainage-nodes',
         type: 'circle',
         source: 'drainage-nodes',
@@ -340,13 +373,12 @@ const DelhiMap = ({
           'circle-stroke-width': 1.4,
         },
       });
-      // Legacy scenario point/road layers removed: depth polygons (above,
-      // under the street layer) are the single V1-style depth visualization,
-      // and OSM street corridors carry the scenario road risk. The sources
-      // stay registered so existing data pushes remain harmless.
-      newMap.addSource('scenario-depth', { type: 'geojson', data: { ...EMPTY_FC } });
-      newMap.addSource('scenario-roads', { type: 'geojson', data: { ...EMPTY_FC } });
-      newMap.addLayer({
+    }
+
+    if (!map.getSource('scenario-depth')) map.addSource('scenario-depth', { type: 'geojson', data: { ...EMPTY_FC } });
+    if (!map.getSource('scenario-roads')) map.addSource('scenario-roads', { type: 'geojson', data: { ...EMPTY_FC } });
+    if (!map.getLayer('surface-hotspots')) {
+      map.addLayer({
         id: 'surface-hotspots',
         type: 'circle',
         source: 'surface-hotspots',
@@ -358,7 +390,9 @@ const DelhiMap = ({
           'circle-stroke-width': 1,
         },
       });
-      newMap.addLayer({
+    }
+    if (!map.getLayer('route-pins')) {
+      map.addLayer({
         id: 'route-pins',
         type: 'circle',
         source: 'route-pins',
@@ -369,23 +403,22 @@ const DelhiMap = ({
           'circle-stroke-width': 2,
         },
       });
-      setMapReady(true);
-    });
+    }
+  };
 
-    // V1-style popups on street/junction/depth layers.
-    const popupRefLocal: { current: Popup | null } = { current: null };
-    const showPopup = (e: any, html: (props: any) => string) => {
-      if (!e.features || e.features.length === 0) return;
-      const props = e.features[0].properties || {};
-      if (popupRefLocal.current) popupRefLocal.current.remove();
-      popupRefLocal.current = new Popup({ closeButton: true, closeOnClick: true, className: 'ops-popup' })
-        .setLngLat(e.lngLat)
-        .setHTML(html(props))
-        .addTo(newMap);
-    };
+  const showPopup = (map: MapLibreMap, e: any, html: (props: any) => string) => {
+    if (!e.features || e.features.length === 0) return;
+    const props = e.features[0].properties || {};
+    if (popupRefLocal.current) popupRefLocal.current.remove();
+    popupRefLocal.current = new Popup({ closeButton: true, closeOnClick: true, className: 'ops-popup' })
+      .setLngLat(e.lngLat)
+      .setHTML(html(props))
+      .addTo(map);
+  };
 
-    newMap.on('click', 'street-risk-roads', (e) =>
-      showPopup(e, (p) => `
+  const attachLayerPopupListeners = (map: MapLibreMap) => {
+    map.on('click', 'street-risk-roads', (e) =>
+      showPopup(map, e, (p) => `
         <div class="popup-box">
           <div class="popup-header">
             <span class="popup-title">AFFECTED STREET CORRIDOR</span>
@@ -400,8 +433,8 @@ const DelhiMap = ({
           </div>
         </div>`),
     );
-    newMap.on('click', 'street-risk-junctions', (e) =>
-      showPopup(e, (p) => `
+    map.on('click', 'street-risk-junctions', (e) =>
+      showPopup(map, e, (p) => `
         <div class="popup-box">
           <div class="popup-header">
             <span class="popup-title">AFFECTED INTERSECTION</span>
@@ -416,8 +449,8 @@ const DelhiMap = ({
           </div>
         </div>`),
     );
-    newMap.on('click', 'flood-depth-polygons', (e) =>
-      showPopup(e, (p) => `
+    map.on('click', 'flood-depth-polygons', (e) =>
+      showPopup(map, e, (p) => `
         <div class="popup-box">
           <div class="popup-header">
             <span class="popup-title">MODELLED FLOOD CELL (30 m)</span>
@@ -430,6 +463,129 @@ const DelhiMap = ({
           </div>
         </div>`),
     );
+  };
+
+  const reapplyAllData = (map: MapLibreMap) => {
+    // 1. Evidence layers from cache
+    for (const spec of LAYER_SPECS) {
+      const cached = geoLayerCacheRef.current[spec.id];
+      if (cached) {
+        const source = map.getSource(`${SOURCE_PREFIX}${spec.id}`) as GeoJSONSource | undefined;
+        if (source) source.setData(cached.geojson as never);
+      }
+      const layerId = `layer-${spec.id}`;
+      if (map.getLayer(layerId)) {
+        map.setLayoutProperty(
+          layerId,
+          'visibility',
+          visibleRef.current[spec.id] ? 'visible' : 'none',
+        );
+      }
+    }
+
+    // 2. Route data
+    const set = (src: string, data: unknown) => {
+      const source = map.getSource(src) as GeoJSONSource | undefined;
+      if (source) source.setData(data as never);
+    };
+    const rResult = routeResultRef.current;
+    const rPicks = routePicksRef.current;
+    set('route-recommended', rResult?.recommended_route?.geometry ?? EMPTY_FC);
+    set('route-alternative', rResult?.alternative_route?.geometry ?? EMPTY_FC);
+    const elevated =
+      rResult?.recommended_route?.risk_segments?.features.filter(
+        (f) => f.properties.risk_state === 'ELEVATED_RISK',
+      ) ?? [];
+    const unknown =
+      rResult?.recommended_route?.risk_segments?.features.filter(
+        (f) => f.properties.risk_state === 'UNKNOWN',
+      ) ?? [];
+    set('route-risk-elevated', { type: 'FeatureCollection', features: elevated });
+    set('route-risk-unknown', { type: 'FeatureCollection', features: unknown });
+
+    const pinFeatures: object[] = [];
+    if (rPicks.origin) {
+      pinFeatures.push({
+        type: 'Feature',
+        properties: { color: '#1d4ed8', label: 'origin' },
+        geometry: { type: 'Point', coordinates: rPicks.origin.coords },
+      });
+    }
+    if (rPicks.destination) {
+      pinFeatures.push({
+        type: 'Feature',
+        properties: { color: '#dc2626', label: 'destination' },
+        geometry: { type: 'Point', coordinates: rPicks.destination.coords },
+      });
+    }
+    set('route-pins', { type: 'FeatureCollection', features: pinFeatures });
+
+    // 3. Drainage & flood data
+    const dGraph = drainageGraphRef.current;
+    const dCells = depthCellsRef.current;
+    const dPolygons = depthPolygonsRef.current;
+    const sRoadDepths = scenarioRoadDepthsRef.current;
+    const sHotspots = surfaceHotspotsRef.current;
+    const sRisk = streetRiskRef.current;
+
+    set('drainage-nodes', dGraph?.nodes ?? EMPTY_FC);
+    set('drainage-edges', dGraph?.edges ?? EMPTY_FC);
+    set('scenario-depth', {
+      type: 'FeatureCollection',
+      features: (dCells ?? []).map((c) => ({
+        type: 'Feature',
+        properties: { depth_cm: c.depth_cm, flood_state: c.flood_state },
+        geometry: { type: 'Point', coordinates: [c.lon, c.lat] },
+      })),
+    });
+    set('flood-depth-polygons', dPolygons ?? EMPTY_FC);
+    const roadFeatures = (dGraph?.edges?.features ?? []).map((f) => {
+      const d = sRoadDepths?.[f.properties.edge_id];
+      return {
+        ...f,
+        properties: {
+          ...f.properties,
+          flood_state: d ? d.flood_state : 'DRY',
+          depth_cm: d ? d.depth_cm : 0,
+        },
+      };
+    });
+    set('scenario-roads', { type: 'FeatureCollection', features: roadFeatures });
+    set('surface-hotspots', {
+      type: 'FeatureCollection',
+      features: (sHotspots ?? []).map((h) => ({
+        type: 'Feature',
+        properties: { surface_water_cm_estimated: h.surface_water_cm_estimated },
+        geometry: { type: 'Point', coordinates: [h.lon, h.lat] },
+      })),
+    });
+    set('street-risk-roads', sRisk?.roads_geojson ?? EMPTY_FC);
+    set('street-risk-junctions', sRisk?.intersections_geojson ?? EMPTY_FC);
+  };
+
+  useEffect(() => {
+    if (!mapContainerRef.current || mapInstanceRef.current) return;
+
+    const newMap = new MapLibreMap({
+      container: mapContainerRef.current,
+      style: getBasemapStyle(initialThemeOnMount.current),
+      center: DELHI_CENTER,
+      zoom: DELHI_ZOOM,
+    });
+    newMap.addControl(new NavigationControl({ showCompass: false }), 'top-right');
+    mapInstanceRef.current = newMap;
+    // V1 convention: expose the map instance for extent-control flyTo.
+    (window as unknown as { map?: MapLibreMap }).map = newMap;
+    newMap.on('error', (e) => {
+      // Surface style/source errors instead of silently dropping layers.
+      console.error('[delhi-map]', (e as unknown as { error?: Error }).error?.message || e);
+    });
+
+    newMap.on('load', () => {
+      setupAnalyticalLayers(newMap);
+      attachLayerPopupListeners(newMap);
+      setMapReady(true);
+    });
 
     // Map click -> route point picking; risk-segment clicks -> evidence.
     newMap.on('click', (e) => {
@@ -448,10 +604,41 @@ const DelhiMap = ({
     });
 
     return () => {
+      if (popupRefLocal.current) {
+        popupRefLocal.current.remove();
+      }
       newMap.remove();
       mapInstanceRef.current = null;
     };
   }, []);
+
+  // Theme switch effect: seamlessly update basemap style without remounting or re-fetching APIs
+  const currentThemeRef = useRef<MapTheme | undefined>(theme);
+  useEffect(() => {
+    const map = mapInstanceRef.current;
+    if (!map) return;
+    if (theme === currentThemeRef.current) return;
+    currentThemeRef.current = theme;
+
+    if (popupRefLocal.current) {
+      popupRefLocal.current.remove();
+    }
+
+    const center = map.getCenter();
+    const zoom = map.getZoom();
+    const bearing = map.getBearing();
+    const pitch = map.getPitch();
+
+    const newStyleUrl = getBasemapStyle(theme);
+    map.setStyle(newStyleUrl);
+
+    map.once('style.load', () => {
+      map.jumpTo({ center, zoom, bearing, pitch });
+      setupAnalyticalLayers(map);
+      attachLayerPopupListeners(map);
+      reapplyAllData(map);
+    });
+  }, [theme]);
 
   // Fetch evidence layer data once the map is ready.
   useEffect(() => {
@@ -466,6 +653,7 @@ const DelhiMap = ({
             spec.id,
             controller.signal,
           );
+          geoLayerCacheRef.current[spec.id] = layer;
           const map = mapInstanceRef.current;
           const source = map?.getSource(`${SOURCE_PREFIX}${spec.id}`) as
             | GeoJSONSource

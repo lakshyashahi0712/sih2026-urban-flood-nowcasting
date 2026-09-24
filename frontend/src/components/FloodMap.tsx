@@ -3,6 +3,7 @@ import { Map as MapLibreMap, GeoJSONSource, NavigationControl, Popup, setWorkerU
 import 'maplibre-gl/dist/maplibre-gl.css';
 import workerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url';
 import { apiUrl } from '../api/config';
+import { getBasemapStyle, type MapTheme } from '../config/mapStyles';
 
 setWorkerUrl(workerUrl);
 
@@ -279,7 +280,11 @@ function getRiskCategory(maxDepthM: number): RiskInfo {
   };
 }
 
-const FloodMap = () => {
+interface FloodMapProps {
+  theme?: MapTheme;
+}
+
+const FloodMap = ({ theme }: FloodMapProps = {}) => {
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<MapLibreMap | null>(null);
   const popupRef = useRef<Popup | null>(null);
@@ -314,9 +319,12 @@ const FloodMap = () => {
   const [routeOrigin, setRouteOrigin] = useState<[number, number] | null>(null);
   const [routeDestination, setRouteDestination] = useState<[number, number] | null>(null);
   const [routeResponse, setRouteResponse] = useState<SafeRouteAPIResponse | null>(null);
+  const routeResponseRef = useRef<SafeRouteAPIResponse | null>(null);
+  routeResponseRef.current = routeResponse;
   const [routeLoading, setRouteLoading] = useState<boolean>(false);
   const [routeError, setRouteError] = useState<string | null>(null);
   const [mobileDrawerExpanded, setMobileDrawerExpanded] = useState<boolean>(true);
+  const initialThemeOnMount = useRef(theme);
 
   const appModeRef = useRef<AppMode>('LIVE');
   appModeRef.current = appMode;
@@ -718,35 +726,17 @@ const FloodMap = () => {
     }
   }, [applyHorizonToMap]);
 
-  // Initialize Map
-  useEffect(() => {
-    if (!mapContainerRef.current) return;
-
-    const newMap = new MapLibreMap({
-      container: mapContainerRef.current,
-      style: 'https://tiles.openfreemap.org/styles/liberty',
-      center: [72.8777, 19.0760],
-      zoom: 11
-    });
-
-    newMap.addControl(new NavigationControl({ visualizePitch: true }), 'top-right');
-
-    newMap.on('error', (e) => {
-      console.error('MapLibre runtime error:', e);
-    });
-
-    newMap.on('load', () => {
-      mapInstanceRef.current = newMap;
-      (window as any).map = newMap;
-
-      // Add flood source
-      newMap.addSource('flood-depth', {
+  const setupMumbaiLayers = (map: MapLibreMap) => {
+    // Add flood source
+    if (!map.getSource('flood-depth')) {
+      map.addSource('flood-depth', {
         type: 'geojson',
         data: { type: 'FeatureCollection', features: [] }
       });
+    }
 
-      // Flood polygon fill with high visual prominence
-      newMap.addLayer({
+    if (!map.getLayer('flood-depth-layer')) {
+      map.addLayer({
         id: 'flood-depth-layer',
         type: 'fill',
         source: 'flood-depth',
@@ -763,9 +753,10 @@ const FloodMap = () => {
           'fill-opacity': 0.85
         }
       });
+    }
 
-      // Outer boundary stroke (halo zeroed to prevent harsh checkerboard tile outlines)
-      newMap.addLayer({
+    if (!map.getLayer('flood-depth-halo')) {
+      map.addLayer({
         id: 'flood-depth-halo',
         type: 'line',
         source: 'flood-depth',
@@ -775,9 +766,10 @@ const FloodMap = () => {
           'line-opacity': 0.0
         }
       });
+    }
 
-      // Subtle water perimeter edge
-      newMap.addLayer({
+    if (!map.getLayer('flood-depth-outline')) {
+      map.addLayer({
         id: 'flood-depth-outline',
         type: 'line',
         source: 'flood-depth',
@@ -787,14 +779,18 @@ const FloodMap = () => {
           'line-opacity': 0.35
         }
       });
+    }
 
-      // 4. AFFECTED ROADS (OSM Street Corridors with Risk-Color Coding)
-      newMap.addSource('affected-roads', {
+    // 4. AFFECTED ROADS (OSM Street Corridors with Risk-Color Coding)
+    if (!map.getSource('affected-roads')) {
+      map.addSource('affected-roads', {
         type: 'geojson',
         data: { type: 'FeatureCollection', features: [] }
       });
+    }
 
-      newMap.addLayer({
+    if (!map.getLayer('affected-roads-layer')) {
+      map.addLayer({
         id: 'affected-roads-layer',
         type: 'line',
         source: 'affected-roads',
@@ -822,14 +818,18 @@ const FloodMap = () => {
           'line-opacity': 0.95,
         }
       });
+    }
 
-      // 5. AFFECTED INTERSECTIONS (Topological Junctions with Risk Markers)
-      newMap.addSource('affected-intersections', {
+    // 5. AFFECTED INTERSECTIONS (Topological Junctions with Risk Markers)
+    if (!map.getSource('affected-intersections')) {
+      map.addSource('affected-intersections', {
         type: 'geojson',
         data: { type: 'FeatureCollection', features: [] }
       });
+    }
 
-      newMap.addLayer({
+    if (!map.getLayer('affected-intersections-layer')) {
+      map.addLayer({
         id: 'affected-intersections-layer',
         type: 'circle',
         source: 'affected-intersections',
@@ -857,14 +857,18 @@ const FloodMap = () => {
           'circle-opacity': 0.95,
         }
       });
+    }
 
-      // 6. HISTORICAL BENCHMARKS (Observed 2017 Ground-Truth Hotspots)
-      newMap.addSource('historical-benchmarks', {
+    // 6. HISTORICAL BENCHMARKS (Observed 2017 Ground-Truth Hotspots)
+    if (!map.getSource('historical-benchmarks')) {
+      map.addSource('historical-benchmarks', {
         type: 'geojson',
         data: { type: 'FeatureCollection', features: [] }
       });
+    }
 
-      newMap.addLayer({
+    if (!map.getLayer('historical-benchmarks-halo')) {
+      map.addLayer({
         id: 'historical-benchmarks-halo',
         type: 'circle',
         source: 'historical-benchmarks',
@@ -882,8 +886,10 @@ const FloodMap = () => {
           'circle-opacity': 0.85,
         }
       });
+    }
 
-      newMap.addLayer({
+    if (!map.getLayer('historical-benchmarks-layer')) {
+      map.addLayer({
         id: 'historical-benchmarks-layer',
         type: 'circle',
         source: 'historical-benchmarks',
@@ -903,15 +909,18 @@ const FloodMap = () => {
           'circle-opacity': 1.0,
         }
       });
+    }
 
-      // 7. SAFE ROUTING SOURCES & LAYERS
-      newMap.addSource('safe-route', {
+    // 7. SAFE ROUTING SOURCES & LAYERS
+    if (!map.getSource('safe-route')) {
+      map.addSource('safe-route', {
         type: 'geojson',
         data: { type: 'FeatureCollection', features: [] }
       });
+    }
 
-      // Dark casing line for contrast against all map styles
-      newMap.addLayer({
+    if (!map.getLayer('safe-route-halo')) {
+      map.addLayer({
         id: 'safe-route-halo',
         type: 'line',
         source: 'safe-route',
@@ -926,9 +935,10 @@ const FloodMap = () => {
           'line-opacity': 0.85,
         }
       });
+    }
 
-      // Status-colored route path
-      newMap.addLayer({
+    if (!map.getLayer('safe-route-line')) {
+      map.addLayer({
         id: 'safe-route-line',
         type: 'line',
         source: 'safe-route',
@@ -951,14 +961,18 @@ const FloodMap = () => {
           'line-opacity': 1.0,
         }
       });
+    }
 
-      // Origin & destination waypoint pins
-      newMap.addSource('route-waypoints', {
+    // Origin & destination waypoint pins
+    if (!map.getSource('route-waypoints')) {
+      map.addSource('route-waypoints', {
         type: 'geojson',
         data: { type: 'FeatureCollection', features: [] }
       });
+    }
 
-      newMap.addLayer({
+    if (!map.getLayer('route-waypoints-layer')) {
+      map.addLayer({
         id: 'route-waypoints-layer',
         type: 'circle',
         source: 'route-waypoints',
@@ -979,332 +993,401 @@ const FloodMap = () => {
           'circle-opacity': 1.0,
         }
       });
+    }
+  };
 
-      // Interactive popup on benchmark click
-      newMap.on('click', 'historical-benchmarks-layer', (e) => {
-        if (isRoutingActiveRef.current) return;
-        if (!e.features || e.features.length === 0) return;
-        const props = e.features[0].properties || {};
-        const name = props.location_name || 'Benchmark Location';
-        const minObs = props.observed_min_depth_m != null ? Number(props.observed_min_depth_m).toFixed(2) : '--';
-        const maxObs = props.observed_max_depth_m != null ? Number(props.observed_max_depth_m).toFixed(2) : null;
-        const obsRangeStr = props.observed_depth_range || props.descriptor || (maxObs ? `${minObs} – ${maxObs} m` : `>2.20 m`);
-        const matchedDepth = props.matched_depth_m != null ? Number(props.matched_depth_m).toFixed(3) : '0.000';
-        const inRange = Boolean(props.within_observed_range);
-        const spatialStatus = props.spatial_status === 'OUTSIDE_PILOT_EXTENT'
-          ? 'Outside Pilot'
-          : (matchedDepth === '0.000' ? 'Dry Cell' : (inRange ? 'In Range' : 'Outside Range'));
-        const matchMethod = props.match_method || 'Point comparison';
-        const distanceM = props.matched_cell_distance_m != null ? `${Number(props.matched_cell_distance_m).toFixed(1)} m` : 'N/A';
-        const notes = props.notes || '';
+  const attachMumbaiListeners = (map: MapLibreMap) => {
+    // Interactive popup on benchmark click
+    map.on('click', 'historical-benchmarks-layer', (e) => {
+      if (isRoutingActiveRef.current) return;
+      if (!e.features || e.features.length === 0) return;
+      const props = e.features[0].properties || {};
+      const name = props.location_name || 'Benchmark Location';
+      const minObs = props.observed_min_depth_m != null ? Number(props.observed_min_depth_m).toFixed(2) : '--';
+      const maxObs = props.observed_max_depth_m != null ? Number(props.observed_max_depth_m).toFixed(2) : null;
+      const obsRangeStr = props.observed_depth_range || props.descriptor || (maxObs ? `${minObs} – ${maxObs} m` : `>2.20 m`);
+      const matchedDepth = props.matched_depth_m != null ? Number(props.matched_depth_m).toFixed(3) : '0.000';
+      const inRange = Boolean(props.within_observed_range);
+      const spatialStatus = props.spatial_status === 'OUTSIDE_PILOT_EXTENT'
+        ? 'Outside Pilot'
+        : (matchedDepth === '0.000' ? 'Dry Cell' : (inRange ? 'In Range' : 'Outside Range'));
+      const matchMethod = props.match_method || 'Point comparison';
+      const distanceM = props.matched_cell_distance_m != null ? `${Number(props.matched_cell_distance_m).toFixed(1)} m` : 'N/A';
+      const notes = props.notes || '';
 
-        if (popupRef.current) popupRef.current.remove();
-        popupRef.current = new Popup({ closeButton: true, closeOnClick: true, className: 'ops-popup' })
-          .setLngLat(e.lngLat)
-          .setHTML(`
-            <div class="popup-box">
-              <div class="popup-header">
-                <span class="popup-title">HISTORICAL FLOOD BENCHMARK</span>
-                <span class="popup-badge ${inRange ? 'risk-low' : 'risk-high'}">${spatialStatus}</span>
+      if (popupRef.current) popupRef.current.remove();
+      popupRef.current = new Popup({ closeButton: true, closeOnClick: true, className: 'ops-popup' })
+        .setLngLat(e.lngLat)
+        .setHTML(`
+          <div class="popup-box">
+            <div class="popup-header">
+              <span class="popup-title">HISTORICAL FLOOD BENCHMARK</span>
+              <span class="popup-badge ${inRange ? 'risk-low' : 'risk-high'}">${spatialStatus}</span>
+            </div>
+            <div class="popup-body">
+              <div class="popup-row">
+                <span class="lbl">Location:</span>
+                <span class="val bold">${name}</span>
               </div>
-              <div class="popup-body">
-                <div class="popup-row">
-                  <span class="lbl">Location:</span>
-                  <span class="val bold">${name}</span>
-                </div>
-                <div class="popup-row">
-                  <span class="lbl">Observed Depth:</span>
-                  <span class="val bold" style="color: #c2410c">${obsRangeStr}</span>
-                </div>
-                <div class="popup-row">
-                  <span class="lbl">Modeled Depth:</span>
-                  <span class="val bold" style="color: #0369a1">${matchedDepth} m</span>
-                </div>
-                <div class="popup-row">
-                  <span class="lbl">Match Method:</span>
-                  <span class="val">${matchMethod}</span>
-                </div>
-                <div class="popup-row">
-                  <span class="lbl">Search Distance:</span>
-                  <span class="val">${distanceM}</span>
-                </div>
-                <div class="popup-row">
-                  <span class="lbl">Source Event:</span>
-                  <span class="val">29 Aug 2017 (Observed)</span>
-                </div>
-                <div class="popup-row" style="margin-top: 4px; border-top: 1px solid #cbd5e1; padding-top: 4px;">
-                  <span class="lbl" style="font-size: 9.5px; color: #64748b;">${notes}</span>
-                </div>
+              <div class="popup-row">
+                <span class="lbl">Observed Depth:</span>
+                <span class="val bold" style="color: #c2410c">${obsRangeStr}</span>
+              </div>
+              <div class="popup-row">
+                <span class="lbl">Modeled Depth:</span>
+                <span class="val bold" style="color: #0369a1">${matchedDepth} m</span>
+              </div>
+              <div class="popup-row">
+                <span class="lbl">Match Method:</span>
+                <span class="val">${matchMethod}</span>
+              </div>
+              <div class="popup-row">
+                <span class="lbl">Search Distance:</span>
+                <span class="val">${distanceM}</span>
+              </div>
+              <div class="popup-row">
+                <span class="lbl">Source Event:</span>
+                <span class="val">29 Aug 2017 (Observed)</span>
+              </div>
+              <div class="popup-row" style="margin-top: 4px; border-top: 1px solid #cbd5e1; padding-top: 4px;">
+                <span class="lbl" style="font-size: 9.5px; color: #64748b;">${notes}</span>
               </div>
             </div>
-          `)
-          .addTo(newMap);
-      });
+          </div>
+        `)
+        .addTo(map);
+    });
 
-      newMap.on('mouseenter', 'historical-benchmarks-layer', () => {
-        if (isRoutingActiveRef.current) return;
-        newMap.getCanvas().style.cursor = 'pointer';
-      });
-      newMap.on('mouseleave', 'historical-benchmarks-layer', () => {
-        if (isRoutingActiveRef.current) {
-          newMap.getCanvas().style.cursor = 'crosshair';
-          return;
-        }
-        newMap.getCanvas().style.cursor = '';
-      });
+    map.on('mouseenter', 'historical-benchmarks-layer', () => {
+      if (isRoutingActiveRef.current) return;
+      map.getCanvas().style.cursor = 'pointer';
+    });
+    map.on('mouseleave', 'historical-benchmarks-layer', () => {
+      if (isRoutingActiveRef.current) {
+        map.getCanvas().style.cursor = 'crosshair';
+        return;
+      }
+      map.getCanvas().style.cursor = '';
+    });
 
-      // Interactive popup on road corridor click
-      newMap.on('click', 'affected-roads-layer', (e) => {
-        if (isRoutingActiveRef.current) return;
-        if (!e.features || e.features.length === 0) return;
-        const props = e.features[0].properties || {};
-        const depthM = props.max_depth_m != null ? Number(props.max_depth_m).toFixed(2) : '0.00';
-        const depthCm = Math.round(Number(depthM) * 100);
-        const risk = props.risk_level || 'LOW';
-        const name = props.name || 'Unnamed Street';
-        const len = props.flooded_length_m ? `${props.flooded_length_m} m` : 'N/A';
-        const hwy = props.highway || 'road';
-        const isHist = appModeRef.current === 'HISTORICAL';
-        const popupTitle = isHist ? 'MODELLED FLOODED CORRIDOR (2017)' : 'AFFECTED STREET CORRIDOR';
-        const depthLbl = isHist ? 'Modelled depth:' : 'Predicted depth:';
-        const depthSource = isHist ? 'Modelled Retrospective (D8 + Copernicus 30m)' : 'Modelled (Copernicus 30m DEM)';
+    // Interactive popup on road corridor click
+    map.on('click', 'affected-roads-layer', (e) => {
+      if (isRoutingActiveRef.current) return;
+      if (!e.features || e.features.length === 0) return;
+      const props = e.features[0].properties || {};
+      const depthM = props.max_depth_m != null ? Number(props.max_depth_m).toFixed(2) : '0.00';
+      const depthCm = Math.round(Number(depthM) * 100);
+      const risk = props.risk_level || 'LOW';
+      const name = props.name || 'Unnamed Street';
+      const len = props.flooded_length_m ? `${props.flooded_length_m} m` : 'N/A';
+      const hwy = props.highway || 'road';
+      const isHist = appModeRef.current === 'HISTORICAL';
+      const popupTitle = isHist ? 'MODELLED FLOODED CORRIDOR (2017)' : 'AFFECTED STREET CORRIDOR';
+      const depthLbl = isHist ? 'Modelled depth:' : 'Predicted depth:';
+      const depthSource = isHist ? 'Modelled Retrospective (D8 + Copernicus 30m)' : 'Modelled (Copernicus 30m DEM)';
 
-        if (popupRef.current) popupRef.current.remove();
-        popupRef.current = new Popup({ closeButton: true, closeOnClick: true, className: 'ops-popup' })
-          .setLngLat(e.lngLat)
-          .setHTML(`
-            <div class="popup-box">
-              <div class="popup-header">
-                <span class="popup-title">${popupTitle}</span>
-                <span class="popup-badge risk-${risk.toLowerCase()}">${risk}</span>
+      if (popupRef.current) popupRef.current.remove();
+      popupRef.current = new Popup({ closeButton: true, closeOnClick: true, className: 'ops-popup' })
+        .setLngLat(e.lngLat)
+        .setHTML(`
+          <div class="popup-box">
+            <div class="popup-header">
+              <span class="popup-title">${popupTitle}</span>
+              <span class="popup-badge risk-${risk.toLowerCase()}">${risk}</span>
+            </div>
+            <div class="popup-body">
+              <div class="popup-row">
+                <span class="lbl">Street:</span>
+                <span class="val bold">${name}</span>
               </div>
-              <div class="popup-body">
-                <div class="popup-row">
-                  <span class="lbl">Street:</span>
-                  <span class="val bold">${name}</span>
-                </div>
-                <div class="popup-row">
-                  <span class="lbl">Classification:</span>
-                  <span class="val">${hwy}</span>
-                </div>
-                <div class="popup-row">
-                  <span class="lbl">${depthLbl}</span>
-                  <span class="val bold" style="color: #c2410c">${depthM} m (${depthCm} cm)</span>
-                </div>
-                <div class="popup-row">
-                  <span class="lbl">Flooded corridor:</span>
-                  <span class="val">${len}</span>
-                </div>
-                <div class="popup-row">
-                  <span class="lbl">Road geometry:</span>
-                  <span class="val">OpenStreetMap (ODbL)</span>
-                </div>
-                <div class="popup-row">
-                  <span class="lbl">Depth source:</span>
-                  <span class="val status-modelled">${depthSource}</span>
-                </div>
+              <div class="popup-row">
+                <span class="lbl">Classification:</span>
+                <span class="val">${hwy}</span>
+              </div>
+              <div class="popup-row">
+                <span class="lbl">${depthLbl}</span>
+                <span class="val bold" style="color: #c2410c">${depthM} m (${depthCm} cm)</span>
+              </div>
+              <div class="popup-row">
+                <span class="lbl">Flooded corridor:</span>
+                <span class="val">${len}</span>
+              </div>
+              <div class="popup-row">
+                <span class="lbl">Road geometry:</span>
+                <span class="val">OpenStreetMap (ODbL)</span>
+              </div>
+              <div class="popup-row">
+                <span class="lbl">Depth source:</span>
+                <span class="val status-modelled">${depthSource}</span>
               </div>
             </div>
-          `)
-          .addTo(newMap);
-      });
+          </div>
+        `)
+        .addTo(map);
+    });
 
-      newMap.on('mouseenter', 'affected-roads-layer', () => {
-        if (isRoutingActiveRef.current) return;
-        newMap.getCanvas().style.cursor = 'pointer';
-      });
-      newMap.on('mouseleave', 'affected-roads-layer', () => {
-        if (isRoutingActiveRef.current) {
-          newMap.getCanvas().style.cursor = 'crosshair';
-          return;
-        }
-        newMap.getCanvas().style.cursor = '';
-      });
+    map.on('mouseenter', 'affected-roads-layer', () => {
+      if (isRoutingActiveRef.current) return;
+      map.getCanvas().style.cursor = 'pointer';
+    });
+    map.on('mouseleave', 'affected-roads-layer', () => {
+      if (isRoutingActiveRef.current) {
+        map.getCanvas().style.cursor = 'crosshair';
+        return;
+      }
+      map.getCanvas().style.cursor = '';
+    });
 
-      // Interactive popup on junction click
-      newMap.on('click', 'affected-intersections-layer', (e) => {
-        if (isRoutingActiveRef.current) return;
-        if (!e.features || e.features.length === 0) return;
-        const props = e.features[0].properties || {};
-        const depthM = props.max_depth_m != null ? Number(props.max_depth_m).toFixed(2) : '0.00';
-        const depthCm = Math.round(Number(depthM) * 100);
-        const risk = props.risk_level || 'LOW';
-        const name = props.name || 'Junction';
-        const roads = props.roads_display || name;
-        const isHist = appModeRef.current === 'HISTORICAL';
-        const popupTitle = isHist ? 'MODELLED FLOODED INTERSECTION (2017)' : 'AFFECTED INTERSECTION';
-        const depthLbl = isHist ? 'Modelled depth:' : 'Predicted depth:';
-        const depthSource = isHist ? 'Modelled Retrospective (D8 + Copernicus 30m)' : 'Modelled (Copernicus 30m DEM)';
+    // Interactive popup on junction click
+    map.on('click', 'affected-intersections-layer', (e) => {
+      if (isRoutingActiveRef.current) return;
+      if (!e.features || e.features.length === 0) return;
+      const props = e.features[0].properties || {};
+      const depthM = props.max_depth_m != null ? Number(props.max_depth_m).toFixed(2) : '0.00';
+      const depthCm = Math.round(Number(depthM) * 100);
+      const risk = props.risk_level || 'LOW';
+      const name = props.name || 'Junction';
+      const roads = props.roads_display || name;
+      const isHist = appModeRef.current === 'HISTORICAL';
+      const popupTitle = isHist ? 'MODELLED FLOODED INTERSECTION (2017)' : 'AFFECTED INTERSECTION';
+      const depthLbl = isHist ? 'Modelled depth:' : 'Predicted depth:';
+      const depthSource = isHist ? 'Modelled Retrospective (D8 + Copernicus 30m)' : 'Modelled (Copernicus 30m DEM)';
 
-        if (popupRef.current) popupRef.current.remove();
-        popupRef.current = new Popup({ closeButton: true, closeOnClick: true, className: 'ops-popup' })
-          .setLngLat(e.lngLat)
-          .setHTML(`
-            <div class="popup-box">
-              <div class="popup-header">
-                <span class="popup-title">${popupTitle}</span>
-                <span class="popup-badge risk-${risk.toLowerCase()}">${risk}</span>
+      if (popupRef.current) popupRef.current.remove();
+      popupRef.current = new Popup({ closeButton: true, closeOnClick: true, className: 'ops-popup' })
+        .setLngLat(e.lngLat)
+        .setHTML(`
+          <div class="popup-box">
+            <div class="popup-header">
+              <span class="popup-title">${popupTitle}</span>
+              <span class="popup-badge risk-${risk.toLowerCase()}">${risk}</span>
+            </div>
+            <div class="popup-body">
+              <div class="popup-row">
+                <span class="lbl">Junction:</span>
+                <span class="val bold">${name}</span>
               </div>
-              <div class="popup-body">
-                <div class="popup-row">
-                  <span class="lbl">Junction:</span>
-                  <span class="val bold">${name}</span>
-                </div>
-                <div class="popup-row">
-                  <span class="lbl">Cross streets:</span>
-                  <span class="val">${roads}</span>
-                </div>
-                <div class="popup-row">
-                  <span class="lbl">${depthLbl}</span>
-                  <span class="val bold" style="color: #c2410c">${depthM} m (${depthCm} cm)</span>
-                </div>
-                <div class="popup-row">
-                  <span class="lbl">Topology:</span>
-                  <span class="val">OpenStreetMap (ODbL)</span>
-                </div>
-                <div class="popup-row">
-                  <span class="lbl">Depth source:</span>
-                  <span class="val status-modelled">${depthSource}</span>
-                </div>
+              <div class="popup-row">
+                <span class="lbl">Cross streets:</span>
+                <span class="val">${roads}</span>
+              </div>
+              <div class="popup-row">
+                <span class="lbl">${depthLbl}</span>
+                <span class="val bold" style="color: #c2410c">${depthM} m (${depthCm} cm)</span>
+              </div>
+              <div class="popup-row">
+                <span class="lbl">Topology:</span>
+                <span class="val">OpenStreetMap (ODbL)</span>
+              </div>
+              <div class="popup-row">
+                <span class="lbl">Depth source:</span>
+                <span class="val status-modelled">${depthSource}</span>
               </div>
             </div>
-          `)
-          .addTo(newMap);
-      });
+          </div>
+        `)
+        .addTo(map);
+    });
 
-      newMap.on('mouseenter', 'affected-intersections-layer', () => {
-        if (isRoutingActiveRef.current) return;
-        newMap.getCanvas().style.cursor = 'pointer';
-      });
-      newMap.on('mouseleave', 'affected-intersections-layer', () => {
-        if (isRoutingActiveRef.current) {
-          newMap.getCanvas().style.cursor = 'crosshair';
-          return;
-        }
-        newMap.getCanvas().style.cursor = '';
-      });
+    map.on('mouseenter', 'affected-intersections-layer', () => {
+      if (isRoutingActiveRef.current) return;
+      map.getCanvas().style.cursor = 'pointer';
+    });
+    map.on('mouseleave', 'affected-intersections-layer', () => {
+      if (isRoutingActiveRef.current) {
+        map.getCanvas().style.cursor = 'crosshair';
+        return;
+      }
+      map.getCanvas().style.cursor = '';
+    });
 
-      // Interactive popup on cell/waterbody click
-      newMap.on('click', 'flood-depth-layer', (e) => {
-        if (isRoutingActiveRef.current) return;
-        if (!e.features || e.features.length === 0) return;
-        const feature = e.features[0];
-        const depth = feature.properties?.depth != null ? Number(feature.properties.depth) : 0;
-        const cellCount = feature.properties?.cell_count != null ? Number(feature.properties.cell_count) : 1;
-        const minDepth = feature.properties?.min_depth != null ? Number(feature.properties.min_depth) : depth;
-        const maxDepth = feature.properties?.max_depth != null ? Number(feature.properties.max_depth) : depth;
-        const meanDepth = feature.properties?.mean_depth != null ? Number(feature.properties.mean_depth) : depth;
-        const depthBand = feature.properties?.depth_class as string | undefined;
+    // Interactive popup on cell/waterbody click
+    map.on('click', 'flood-depth-layer', (e) => {
+      if (isRoutingActiveRef.current) return;
+      if (!e.features || e.features.length === 0) return;
+      const feature = e.features[0];
+      const depth = feature.properties?.depth != null ? Number(feature.properties.depth) : 0;
+      const cellCount = feature.properties?.cell_count != null ? Number(feature.properties.cell_count) : 1;
+      const minDepth = feature.properties?.min_depth != null ? Number(feature.properties.min_depth) : depth;
+      const maxDepth = feature.properties?.max_depth != null ? Number(feature.properties.max_depth) : depth;
+      const meanDepth = feature.properties?.mean_depth != null ? Number(feature.properties.mean_depth) : depth;
+      const depthBand = feature.properties?.depth_class as string | undefined;
 
-        const depthM = depth.toFixed(2);
-        const depthCm = Math.round(depth * 100);
-        const risk = getRiskCategory(depth);
+      const depthM = depth.toFixed(2);
+      const depthCm = Math.round(depth * 100);
+      const risk = getRiskCategory(depth);
 
-        const isHistorical = appModeRef.current === 'HISTORICAL';
-        const isScenario = appModeRef.current === 'SCENARIO';
-        const activeCfg = horizonsRef.current.find(h => h.key === activeHorizonRef.current);
-        const liveRainStr = activeCfg && activeCfg.rainfallMm !== null ? `${activeCfg.rainfallMm.toFixed(1)} mm` : 'N/A';
+      const isHistorical = appModeRef.current === 'HISTORICAL';
+      const isScenario = appModeRef.current === 'SCENARIO';
+      const activeCfg = horizonsRef.current.find(h => h.key === activeHorizonRef.current);
+      const liveRainStr = activeCfg && activeCfg.rainfallMm !== null ? `${activeCfg.rainfallMm.toFixed(1)} mm` : 'N/A';
 
-        const currentHistStep = historicalDataRef.current?.timesteps?.[historicalStepRef.current];
+      const currentHistStep = historicalDataRef.current?.timesteps?.[historicalStepRef.current];
 
-        const headingText = isHistorical
-          ? (cellCount > 1 ? `HISTORICAL FLOOD REGION (${cellCount} CONTIGUOUS CELLS)` : 'HISTORICAL SIMULATION CELL (30 m)')
-          : isScenario
-          ? 'MODEL SCENARIO CELL (30 m)'
-          : 'MODELLED FLOOD CELL (30 m)';
+      const headingText = isHistorical
+        ? (cellCount > 1 ? `HISTORICAL FLOOD REGION (${cellCount} CONTIGUOUS CELLS)` : 'HISTORICAL SIMULATION CELL (30 m)')
+        : isScenario
+        ? 'MODEL SCENARIO CELL (30 m)'
+        : 'MODELLED FLOOD CELL (30 m)';
 
-        const depthDisplayRow = (isHistorical && cellCount > 1)
-          ? `<div class="popup-row">
-               <span class="lbl">Depth range:</span>
-               <span class="val bold">${minDepth.toFixed(2)} – ${maxDepth.toFixed(2)} m (mean: ${meanDepth.toFixed(2)} m)</span>
-             </div>
-             <div class="popup-row">
-               <span class="lbl">Depth band:</span>
-               <span class="val">${depthBand || 'N/A'}</span>
-             </div>
-             <div class="popup-row">
-               <span class="lbl">Contiguous area:</span>
-               <span class="val">${cellCount} cells (~${(cellCount * 900).toLocaleString()} m²)</span>
-             </div>`
-          : `<div class="popup-row">
-               <span class="lbl">Predicted depth:</span>
-               <span class="val bold">${depthM} m (${depthCm} cm)</span>
-             </div>`;
+      const depthDisplayRow = (isHistorical && cellCount > 1)
+        ? `<div class="popup-row">
+             <span class="lbl">Depth range:</span>
+             <span class="val bold">${minDepth.toFixed(2)} – ${maxDepth.toFixed(2)} m (mean: ${meanDepth.toFixed(2)} m)</span>
+           </div>
+           <div class="popup-row">
+             <span class="lbl">Depth band:</span>
+             <span class="val">${depthBand || 'N/A'}</span>
+           </div>
+           <div class="popup-row">
+             <span class="lbl">Contiguous area:</span>
+             <span class="val">${cellCount} cells (~${(cellCount * 900).toLocaleString()} m²)</span>
+           </div>`
+        : `<div class="popup-row">
+             <span class="lbl">Predicted depth:</span>
+             <span class="val bold">${depthM} m (${depthCm} cm)</span>
+           </div>`;
 
-        const horizonOrScenarioRow = isHistorical
-          ? `<div class="popup-row">
-               <span class="lbl">Replay timestep:</span>
-               <span class="val bold">${currentHistStep?.time_display || `Step ${historicalStepRef.current + 1}`}</span>
-             </div>
-             <div class="popup-row">
-               <span class="lbl">Hourly rainfall:</span>
-               <span class="val">${currentHistStep?.rainfall_mm?.toFixed(1) || '0.0'} mm</span>
-             </div>`
-          : isScenario
-          ? `<div class="popup-row">
-               <span class="lbl">Scenario rate:</span>
-               <span class="val bold">${activeScenarioRef.current} mm/h</span>
-             </div>`
-          : `<div class="popup-row">
-               <span class="lbl">Forecast horizon:</span>
-               <span class="val">${activeHorizonRef.current} (${liveRainStr})</span>
-             </div>`;
+      const horizonOrScenarioRow = isHistorical
+        ? `<div class="popup-row">
+             <span class="lbl">Replay timestep:</span>
+             <span class="val bold">${currentHistStep?.time_display || `Step ${historicalStepRef.current + 1}`}</span>
+           </div>
+           <div class="popup-row">
+             <span class="lbl">Hourly rainfall:</span>
+             <span class="val">${currentHistStep?.rainfall_mm?.toFixed(1) || '0.0'} mm</span>
+           </div>`
+        : isScenario
+        ? `<div class="popup-row">
+             <span class="lbl">Scenario rate:</span>
+             <span class="val bold">${activeScenarioRef.current} mm/h</span>
+           </div>`
+        : `<div class="popup-row">
+             <span class="lbl">Forecast horizon:</span>
+             <span class="val">${activeHorizonRef.current} (${liveRainStr})</span>
+           </div>`;
 
-        const rainfallSourceVal = isHistorical
-          ? 'Literature-calibrated historical forcing (Secondary-Report)'
-          : isScenario
-          ? 'Hypothetical model input (What-If)'
-          : 'Weather forecast (Open-Meteo hourly NWP)';
+      const rainfallSourceVal = isHistorical
+        ? 'Literature-calibrated historical forcing (Secondary-Report)'
+        : isScenario
+        ? 'Hypothetical model input (What-If)'
+        : 'Weather forecast (Open-Meteo hourly NWP)';
 
-        const dataStatusVal = isHistorical
-          ? 'Retrospective Simulation (Copernicus GLO-30 DSM)'
-          : 'Modelled (Copernicus GLO-30 DSM)';
+      const dataStatusVal = isHistorical
+        ? 'Retrospective Simulation (Copernicus GLO-30 DSM)'
+        : 'Modelled (Copernicus GLO-30 DSM)';
 
-        if (popupRef.current) {
-          popupRef.current.remove();
-        }
+      if (popupRef.current) {
+        popupRef.current.remove();
+      }
 
-        popupRef.current = new Popup({ closeButton: true, closeOnClick: true, className: 'ops-popup' })
-          .setLngLat(e.lngLat)
-          .setHTML(`
-            <div class="popup-box">
-              <div class="popup-header">
-                <span class="popup-title">${headingText}</span>
-                <span class="popup-badge ${risk.badgeClass}">${risk.text}</span>
+      popupRef.current = new Popup({ closeButton: true, closeOnClick: true, className: 'ops-popup' })
+        .setLngLat(e.lngLat)
+        .setHTML(`
+          <div class="popup-box">
+            <div class="popup-header">
+              <span class="popup-title">${headingText}</span>
+              <span class="popup-badge ${risk.badgeClass}">${risk.text}</span>
+            </div>
+            <div class="popup-body">
+              ${depthDisplayRow}
+              <div class="popup-row">
+                <span class="lbl">Risk classification:</span>
+                <span class="val">${risk.text}</span>
               </div>
-              <div class="popup-body">
-                ${depthDisplayRow}
-                <div class="popup-row">
-                  <span class="lbl">Risk classification:</span>
-                  <span class="val">${risk.text}</span>
-                </div>
-                ${horizonOrScenarioRow}
-                <div class="popup-row">
-                  <span class="lbl">Rainfall source:</span>
-                  <span class="val">${rainfallSourceVal}</span>
-                </div>
-                <div class="popup-row">
-                  <span class="lbl">Data status:</span>
-                  <span class="val status-modelled">${dataStatusVal}</span>
-                </div>
+              ${horizonOrScenarioRow}
+              <div class="popup-row">
+                <span class="lbl">Rainfall source:</span>
+                <span class="val">${rainfallSourceVal}</span>
+              </div>
+              <div class="popup-row">
+                <span class="lbl">Data status:</span>
+                <span class="val status-modelled">${dataStatusVal}</span>
               </div>
             </div>
-          `)
-          .addTo(newMap);
-      });
+          </div>
+        `)
+        .addTo(map);
+    });
 
-      // Pointer cursor on hover over flooded cells
-      newMap.on('mouseenter', 'flood-depth-layer', () => {
-        if (isRoutingActiveRef.current) return;
-        newMap.getCanvas().style.cursor = 'pointer';
-      });
-      newMap.on('mouseleave', 'flood-depth-layer', () => {
-        if (isRoutingActiveRef.current) {
-          newMap.getCanvas().style.cursor = 'crosshair';
-          return;
-        }
-        newMap.getCanvas().style.cursor = '';
-      });
+    // Pointer cursor on hover over flooded cells
+    map.on('mouseenter', 'flood-depth-layer', () => {
+      if (isRoutingActiveRef.current) return;
+      map.getCanvas().style.cursor = 'pointer';
+    });
+    map.on('mouseleave', 'flood-depth-layer', () => {
+      if (isRoutingActiveRef.current) {
+        map.getCanvas().style.cursor = 'crosshair';
+        return;
+      }
+      map.getCanvas().style.cursor = '';
+    });
+  };
+
+  const reapplyMumbaiData = (map: MapLibreMap) => {
+    const mode = appModeRef.current;
+    if (mode === 'HISTORICAL') {
+      if (historicalDataRef.current) {
+        applyHistoricalStepToMap(historicalStepRef.current, historicalDataRef.current);
+      }
+    } else if (mode === 'SCENARIO') {
+      applyScenarioToMap(activeScenarioRef.current, scenarioDataRef.current);
+      applyStreetDataToMap(streetScenarioDataRef.current?.[activeScenarioRef.current] || null);
+    } else {
+      applyHorizonToMap(activeHorizonRef.current, forecastDataRef.current);
+      applyStreetDataToMap(streetForecastDataRef.current?.[activeHorizonRef.current] || null);
+    }
+
+    // Reapply routing layers
+    updateRouteOnMapRef.current(
+      routeResponseRef.current,
+      routeOriginRef.current,
+      routeDestinationRef.current,
+    );
+
+    // Reapply layer visibilities
+    const isHist = mode === 'HISTORICAL';
+    const bmVis = isHist && showBenchmarksOverlayRef.current ? 'visible' : 'none';
+    if (map.getLayer('historical-benchmarks-halo')) {
+      map.setLayoutProperty('historical-benchmarks-halo', 'visibility', bmVis);
+    }
+    if (map.getLayer('historical-benchmarks-layer')) {
+      map.setLayoutProperty('historical-benchmarks-layer', 'visibility', bmVis);
+    }
+
+    const streetVis = isHist
+      ? (showHistoricalRoadsOverlayRef.current ? 'visible' : 'none')
+      : (showStreetOverlayRef.current ? 'visible' : 'none');
+    if (map.getLayer('affected-roads-layer')) {
+      map.setLayoutProperty('affected-roads-layer', 'visibility', streetVis);
+    }
+    if (map.getLayer('affected-intersections-layer')) {
+      map.setLayoutProperty('affected-intersections-layer', 'visibility', streetVis);
+    }
+  };
+
+  // Initialize Map
+  useEffect(() => {
+    if (!mapContainerRef.current) return;
+
+    const newMap = new MapLibreMap({
+      container: mapContainerRef.current,
+      style: getBasemapStyle(initialThemeOnMount.current),
+      center: [72.8777, 19.0760],
+      zoom: 11
+    });
+
+    newMap.addControl(new NavigationControl({ visualizePitch: true }), 'top-right');
+    mapInstanceRef.current = newMap;
+    (window as any).map = newMap;
+
+    newMap.on('error', (e) => {
+      console.error('MapLibre runtime error:', e);
+    });
+
+    newMap.on('load', () => {
+      setupMumbaiLayers(newMap);
+      attachMumbaiListeners(newMap);
 
       // Safe Route map click handler for selecting origin and destination
       newMap.on('click', (e) => {
@@ -1363,6 +1446,37 @@ const FloodMap = () => {
       mapInstanceRef.current = null;
     };
   }, [fetchForecastEvolution, fetchScenarioEvolution, fetchStreetForecastData, fetchStreetScenarioData, fetchHistoricalReplay, applyStreetDataToMap]);
+
+  const reapplyMumbaiDataRef = useRef(reapplyMumbaiData);
+  reapplyMumbaiDataRef.current = reapplyMumbaiData;
+
+  // Theme switch effect: seamlessly update basemap style without remounting or re-fetching APIs
+  const currentThemeRef = useRef<MapTheme | undefined>(theme);
+  useEffect(() => {
+    const map = mapInstanceRef.current;
+    if (!map) return;
+    if (theme === currentThemeRef.current) return;
+    currentThemeRef.current = theme;
+
+    if (popupRef.current) {
+      popupRef.current.remove();
+    }
+
+    const center = map.getCenter();
+    const zoom = map.getZoom();
+    const bearing = map.getBearing();
+    const pitch = map.getPitch();
+
+    const newStyleUrl = getBasemapStyle(theme);
+    map.setStyle(newStyleUrl);
+
+    map.once('style.load', () => {
+      map.jumpTo({ center, zoom, bearing, pitch });
+      setupMumbaiLayers(map);
+      attachMumbaiListeners(map);
+      reapplyMumbaiDataRef.current(map);
+    });
+  }, [theme]);
 
   // Sync overlay layers visibility
   useEffect(() => {
