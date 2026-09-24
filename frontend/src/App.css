@@ -41,12 +41,31 @@
   overflow: hidden;
 }
 
-/* SYSTEM CITY SWITCHER (SHARED) */
+/* SYSTEM FLOATING CONTROLS (SHARED CITY + MAP THEME SELECTOR) */
+.app-floating-controls {
+  position: fixed;
+  top: 56px;
+  right: 64px;
+  z-index: var(--z-city-switch, 60);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  pointer-events: auto;
+}
+
+.app-floating-controls .city-switch,
+.app-floating-controls .theme-switch {
+  position: relative !important;
+  top: auto !important;
+  right: auto !important;
+  left: auto !important;
+}
+
 .city-switch {
   position: fixed;
   top: 56px;
   right: 64px;
-  z-index: var(--z-city-switch, 30);
+  z-index: var(--z-city-switch, 60);
   display: flex;
   gap: 4px;
   background: rgba(2, 6, 23, 0.88);
@@ -55,6 +74,50 @@
   padding: 3px;
   backdrop-filter: blur(4px);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+}
+
+.theme-switch {
+  display: flex;
+  gap: 4px;
+  background: rgba(2, 6, 23, 0.88);
+  border: 1px solid var(--topbar-border, #1e293b);
+  border-radius: 6px;
+  padding: 3px;
+  backdrop-filter: blur(4px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+}
+
+.theme-btn {
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--topbar-text-muted, #94a3b8);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  padding: 5px 9px;
+  min-height: 32px;
+  border-radius: 4px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  transition: all 0.15s ease;
+  user-select: none;
+}
+
+.theme-btn:not(.active):hover {
+  color: #ffffff;
+  border-color: #334155;
+}
+
+.theme-btn.active {
+  background: var(--accent-primary, #0284c7);
+  color: #ffffff;
+}
+
+.theme-icon {
+  font-size: 12px;
+  line-height: 1;
 }
 
 .city-btn {
@@ -2279,6 +2342,7 @@
     right: 50px;
   }
 
+  .app-floating-controls,
   .city-switch {
     top: 54px;
     right: 56px;
@@ -2392,7 +2456,18 @@
     z-index: var(--z-map-ctrl, 15);
   }
 
-  /* City switcher positioned below topbar on top-left of map */
+  /* Floating controls positioned below topbar on top-left of map */
+  .app-floating-controls {
+    top: 54px;
+    left: 8px;
+    right: auto;
+    gap: 4px;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    max-width: calc(100vw - 60px);
+  }
+
   .city-switch {
     top: 54px;
     left: 8px;
@@ -2400,6 +2475,19 @@
     padding: 2px;
     gap: 3px;
     background: rgba(2, 6, 23, 0.92);
+  }
+
+  .theme-switch {
+    padding: 2px;
+    gap: 3px;
+    background: rgba(2, 6, 23, 0.92);
+  }
+
+  .theme-btn {
+    padding: 4px 6px;
+    font-size: 9.5px;
+    min-height: 28px;
+    gap: 3px;
   }
 
   .city-btn {
@@ -2414,10 +2502,10 @@
     padding: 1px 3px;
   }
 
-  /* Flood Depth Legend: Compact card below city switch */
+  /* Flood Depth Legend: Compact card stacked below city switch and theme switch */
   .flood-legend-card {
     position: absolute;
-    top: 44px;
+    top: 86px;
     bottom: auto;
     left: 8px;
     right: auto;

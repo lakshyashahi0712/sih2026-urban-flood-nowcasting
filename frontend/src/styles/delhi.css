@@ -3,7 +3,26 @@
    Center theme in App.css (topbar/panel/overlay conventions).
    ============================================================ */
 
-/* City switch (below the 48px topbar, clear of the map zoom control) */
+/* Floating controls (below the 48px topbar, clear of the map zoom control) */
+.app-floating-controls {
+  position: fixed;
+  top: 56px;
+  right: 64px;
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  pointer-events: auto;
+}
+
+.app-floating-controls .city-switch,
+.app-floating-controls .theme-switch {
+  position: relative !important;
+  top: auto !important;
+  right: auto !important;
+  left: auto !important;
+}
+
 .city-switch {
   position: fixed;
   top: 56px;
@@ -16,6 +35,48 @@
   border-radius: var(--radius-md);
   padding: 4px;
   backdrop-filter: blur(4px);
+}
+
+.theme-switch {
+  display: flex;
+  gap: 4px;
+  background: rgba(2, 6, 23, 0.82);
+  border: 1px solid var(--topbar-border);
+  border-radius: var(--radius-md);
+  padding: 4px;
+  backdrop-filter: blur(4px);
+}
+
+.theme-btn {
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--topbar-text-muted);
+  font-size: var(--text-xs);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  padding: 5px 10px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  transition: all 0.15s ease;
+  user-select: none;
+}
+
+.theme-btn.active {
+  background: var(--accent-primary);
+  color: #ffffff;
+}
+
+.theme-btn:not(.active):hover {
+  color: var(--topbar-text);
+  border-color: var(--topbar-border);
+}
+
+.theme-icon {
+  font-size: 12px;
+  line-height: 1;
 }
 
 .city-btn {
@@ -825,6 +886,7 @@
     max-height: calc(50dvh - 20px);
     overflow-y: auto;
     box-shadow: 0 4px 20px rgba(15, 23, 42, 0.35);
+    z-index: 70;
   }
 
   .delhi-map-layers.expanded .delhi-layers-title {
@@ -833,6 +895,17 @@
 }
 
 @media (max-width: 768px) {
+  .app-floating-controls {
+    top: 54px;
+    left: 8px;
+    right: auto;
+    gap: 4px;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    max-width: calc(100vw - 60px);
+  }
+
   .city-switch {
     top: 54px;
     left: 8px;
@@ -841,7 +914,12 @@
     gap: 3px;
   }
 
-  .city-btn {
+  .theme-switch {
+    padding: 2px;
+    gap: 3px;
+  }
+
+  .theme-btn {
     padding: 4px 6px;
     font-size: 9.5px;
     min-height: 28px;

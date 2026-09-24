@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import DelhiMap, { type MapFlowState, type RoutePickPoint } from './DelhiMap';
+import { type MapTheme } from '../../config/mapStyles';
 import ReplayPanel from './ReplayPanel';
 import EvidencePanel from './EvidencePanel';
 import RoutePanel from './RoutePanel';
@@ -56,7 +57,7 @@ function riskBanner(maxDepthM: number | null): {
   return { text: 'NO INUNDATION', bg: '#f8fafc', border: '#cbd5e1', color: '#166534', desc: 'Runoff conveyed by drainage • no surface ponding' };
 }
 
-const DelhiApp = () => {
+const DelhiApp = ({ theme }: { theme?: MapTheme } = {}) => {
   const [mode, setMode] = useState<Mode>('LIVE');
   const [horizon, setHorizon] = useState<Horizon>('+1h');
   const [scenarioMm, setScenarioMm] = useState<number>(40);
@@ -376,6 +377,7 @@ const DelhiApp = () => {
                 ? scenarioState?.streets ?? null
                 : null
           }
+          theme={theme}
         />
 
         {/* LEFT WORKSPACE OVERLAY: V1 control stack */}
