@@ -30,6 +30,7 @@ CORE SCIENTIFIC RULES (mirroring the Phase 8A/15.5 evidence contracts):
 
 from __future__ import annotations
 
+import os
 import statistics
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
@@ -153,7 +154,11 @@ def _http_get(url: str, timeout: float):
     client without network access)."""
     import httpx
 
-    return httpx.get(url, timeout=timeout)
+    headers = {
+        "User-Agent": "SIH2026-UrbanFloodNowcast/2.0 (sih2026-flood-nowcasting)",
+        "Accept": "application/json",
+    }
+    return httpx.get(url, headers=headers, timeout=timeout)
 
 
 def _parse_open_meteo_payload(payload: dict, requested_utc_now: datetime) -> Tuple[ForecastBin, ...]:
@@ -229,9 +234,11 @@ def fetch_delhi_rainfall_forecast(
         if fresh is not None:
             return fresh
 
+    api_key = os.getenv("OPEN_METEO_API_KEY", "").strip()
+    key_param = f"&apikey={api_key}" if api_key else ""
     params = (
         f"?latitude={SAFDARJUNG_LAT}&longitude={SAFDARJUNG_LON}"
-        f"&hourly=precipitation&forecast_days=2&timezone=Asia%2FKolkata"
+        f"&hourly=precipitation&forecast_days=2&timezone=Asia%2FKolkata{key_param}"
     )
     try:
         if client is not None:

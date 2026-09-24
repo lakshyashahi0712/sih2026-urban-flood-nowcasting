@@ -171,6 +171,17 @@ class TestLiveStateAPI:
         assert len(body["horizons"]) == 4
         assert body["claim_policy"].startswith("MODELLED")
 
+    def test_client_rainfall_ingestion(self, client):
+        r = client.get("/api/delhi/live-state?client_rainfall_mm=0.0,2.5,5.0,1.2")
+        assert r.status_code == 200
+        body = r.json()
+        assert body["rainfall_status"] == "COMPUTED"
+        assert len(body["horizons"]) == 4
+        assert body["horizons"][0]["rainfall_mm"] == 0.0
+        assert body["horizons"][1]["rainfall_mm"] == 2.5
+        assert body["horizons"][2]["rainfall_mm"] == 5.0
+        assert body["horizons"][3]["rainfall_mm"] == 1.2
+
     def test_single_horizon(self, client):
         r = client.get("/api/delhi/live-state?horizon=%2B2h")
         assert r.status_code == 200
