@@ -2,8 +2,13 @@
 
 These exist to prove the memory fixes changed how the Delhi structures are
 STORED, never what they compute: graph topology, per-edge geometry, routing
-results and V1 depth outputs must be byte-identical to the pre-refactor
-behaviour.
+results and V1 depth outputs must match the pre-refactor behaviour.
+
+Floating quantities are checked with a tolerance, and digests hash values
+rounded to CANONICAL_DP decimals. Lengths come from a PROJ UTM transform, and
+PROJ/libm differ in the last bits of a float across platforms (Windows
+CPython vs GitHub Ubuntu: observed ~1e-13 relative, i.e. sub-nanometre over a
+5 km route). Integers, identifiers, orderings and counts stay exact.
 """
 from __future__ import annotations
 
@@ -11,6 +16,7 @@ import hashlib
 import json
 
 import numpy as np
+import pytest
 
 from backend.app.domain.delhi.routing import engine
 from backend.app.domain.delhi.routing.network import (
@@ -24,14 +30,21 @@ from backend.app.domain.delhi.routing.network import (
 ORIGIN = (77.2085, 28.5790)
 DEST = (77.2380, 28.5770)
 
+#: Relative tolerance for pinned floating measurements (see module docstring).
+REL_TOL = 1e-9
+
+#: Decimal places used when canonicalising floats before hashing.
+CANONICAL_DP = 6
+
 # Snapshot taken from the PRE-representation-change implementation (see
 # scripts/mem_fingerprint.py). Any drift in these values is a behaviour
-# change, not a memory change.
+# change, not a memory change. The *_hash entries are _digest() values over
+# the same pre-refactor tuples (verified against fingerprint_head.json).
 GRAPH_SNAPSHOT = {
     "nodes": 38736,
     "edges": 75619,
     "adj_total": 75620,
-    "all_edges_hash": "2716940773c47f67",
+    "all_edges_hash": "6388e77e10cbfb88",
     "edge_keys_head": [
         "osm-1030848849:10630:25793",
         "osm-1030848849:10630:25794",
@@ -45,12 +58,28 @@ ROUTE_SNAPSHOT = {
     "distance_m": 5483.613673448339,
     "penalty_s": 0.0,
     "travel_s": 518.5721474179904,
-    "geojson_hash": "a1225bd93c83625b",
+    "geojson_hash": "1c3b838ff64d58cf",
+}
+MATCH_INDEX_SNAPSHOT = {
+    "row0_length_m": 44.74377095623352,
+    "sampled_hash": "0c0f9cce797a6387",
 }
 
 
+def _canonical(obj):
+    """Round every float to ``CANONICAL_DP`` so hashes are platform-stable."""
+    if isinstance(obj, float):
+        return round(obj, CANONICAL_DP)
+    if isinstance(obj, dict):
+        return {key: _canonical(value) for key, value in obj.items()}
+    if isinstance(obj, (list, tuple)):
+        return [_canonical(value) for value in obj]
+    return obj
+
+
 def _digest(obj) -> str:
-    return hashlib.sha256(json.dumps(obj, sort_keys=True).encode()).hexdigest()[:16]
+    canonical = _canonical(obj)
+    return hashlib.sha256(json.dumps(canonical, sort_keys=True).encode()).hexdigest()[:16]
 
 
 def _all_edges_signature(graph) -> str:
@@ -109,9 +138,9 @@ def test_dijkstra_route_outputs_unchanged():
     edges = engine._dijkstra(graph, src, dst, risk)
     cand = engine._build_candidate(edges, risk)
     assert len(edges) == ROUTE_SNAPSHOT["n_edges"]
-    assert cand.total_distance_m == ROUTE_SNAPSHOT["distance_m"]
+    assert cand.total_distance_m == pytest.approx(ROUTE_SNAPSHOT["distance_m"], rel=REL_TOL)
     assert cand.risk_penalty_s == ROUTE_SNAPSHOT["penalty_s"]
-    assert cand.travel_time_s == ROUTE_SNAPSHOT["travel_s"]
+    assert cand.travel_time_s == pytest.approx(ROUTE_SNAPSHOT["travel_s"], rel=REL_TOL)
     assert _digest(engine._route_geojson(edges)) == ROUTE_SNAPSHOT["geojson_hash"]
 
 
@@ -145,9 +174,9 @@ def test_v1_depth_output_unchanged():
 
     step = v1_depth_step_for_intensity(depth_mm=40.0, dt_h=1.0, timestep_index=0)
     assert step.flooded_cells == 1008
-    assert step.max_depth_m == 0.644480055005848
-    assert step.conveyed_volume_m3 == 690711.6877442293
-    assert step.surcharged_volume_m3 == 602885.3122557707
+    assert step.max_depth_m == pytest.approx(0.644480055005848, rel=REL_TOL)
+    assert step.conveyed_volume_m3 == pytest.approx(690711.6877442293, rel=REL_TOL)
+    assert step.surcharged_volume_m3 == pytest.approx(602885.3122557707, rel=REL_TOL)
     assert np.count_nonzero(step.depth_m) >= 0
 
 
@@ -161,8 +190,9 @@ def test_road_match_index_content_matches_pre_refactor_snapshot():
     """The index content (order, keys, cells, coords) is what it always was.
 
     Pinned against the pre-refactor row-wise structure (scripts/
-    mem_fingerprint.py: the old dict-list output hashed byte-identical to
-    these rows across all 75,619 segments).
+    mem_fingerprint.py: the old dict-list output hashed identical to these
+    rows across all 75,619 segments, modulo the platform-tolerant
+    canonicalisation in _digest).
     """
     from backend.app.domain.delhi.live_state import _road_match_index
 
@@ -172,18 +202,20 @@ def test_road_match_index_content_matches_pre_refactor_snapshot():
     assert int(index.cell_offsets[0]) == 0
     assert int(index.cell_offsets[-1]) == index.cells_flat.size
     assert len(junctions) == 58
-    assert index.row(0) == {
+    row0 = index.row(0)
+    length_m = row0.pop("length_m")
+    assert row0 == {
         "edge_key": "osm-23138288:0:1",
         "road_id": "osm-23138288",
         "name": "Lala Lajpat Rai Path",
         "highway": "secondary",
-        "length_m": 44.74377095623352,
         "osm_id": 23138288,
         "cells": [7601, 7602, 7857, 7858, 7857, 7858, 8115, 8116, 8115, 8116, 8374],
         "coords": [[77.2405059, 28.5954457], [77.2404086, 28.5950513]],
     }
+    assert length_m == pytest.approx(MATCH_INDEX_SNAPSHOT["row0_length_m"], rel=REL_TOL)
     sampled = [index.row(i) for i in range(0, len(index), 997)]
-    assert _digest(sampled) == "5438034c8e2eba0d"
+    assert _digest(sampled) == MATCH_INDEX_SNAPSHOT["sampled_hash"]
     # Cell lists keep the documented endpoint + midpoint + endpoint order.
     assert any(row["cells"] is None for row in sampled)
 
