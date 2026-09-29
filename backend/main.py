@@ -44,6 +44,12 @@ try:
     from backend.websocket_manager import manager
 except ImportError:
     from websocket_manager import manager
+try:
+    from backend.app.observability.memory_instrumentation import (
+        RequestMemoryLogMiddleware,
+    )
+except ImportError:
+    from app.observability.memory_instrumentation import RequestMemoryLogMiddleware
 
 
 @asynccontextmanager
@@ -88,6 +94,12 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Diagnostics only: logs VmRSS before/after the expensive route families
+# (/api/delhi, /flood, /routing, /rainfall). Pure-ASGI pass-through, so it does
+# not read, buffer or alter the response body. See
+# backend/app/observability/memory_instrumentation.py
+app.add_middleware(RequestMemoryLogMiddleware)
 
 app.include_router(sensors.router)
 app.include_router(alerts.router)

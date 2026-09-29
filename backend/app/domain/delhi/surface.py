@@ -27,7 +27,6 @@ from __future__ import annotations
 
 import sys
 from dataclasses import dataclass
-from functools import lru_cache
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
@@ -42,6 +41,7 @@ from backend.app.domain.delhi.digital_twin.kushak_scenario_ensemble import (
     SCENARIO_RUNOFF_C,
 )
 from backend.app.domain.delhi.routing.risk import get_reach_corridor
+from backend.app.domain.delhi.single_flight import single_flight_cached
 
 _REPO_ROOT = Path(__file__).resolve().parents[4]
 DEM_PATH = _REPO_ROOT / "data" / "delhi" / "derived" / "dem" / "kushak_enforced_dem_burn1m.tif"
@@ -77,7 +77,7 @@ class SurfaceRoutingStructure:
     edge_exit: np.ndarray
 
 
-@lru_cache(maxsize=1)
+@single_flight_cached
 def get_surface_structure() -> SurfaceRoutingStructure:
     """Deterministic D8 structure over the corridor window (cached)."""
     import rasterio

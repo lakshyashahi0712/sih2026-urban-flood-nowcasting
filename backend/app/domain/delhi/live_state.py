@@ -34,7 +34,6 @@ import json
 import math
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
-from functools import lru_cache
 from typing import Dict, List, Optional, Sequence, Tuple
 
 import numpy as np
@@ -55,6 +54,7 @@ from backend.app.domain.delhi.scenarios.depth_v1 import (
     depth_polygons_from_v1,
     v1_depth_step_for_intensity,
 )
+from backend.app.domain.delhi.single_flight import single_flight_cached
 from backend.app.domain.delhi.surface import get_surface_structure
 
 # IST = UTC+05:30 (matches the nowcast module's forecast window convention).
@@ -185,16 +185,96 @@ def client_forecast_fetch(mm_values: Sequence[float]) -> DelhiForecastFetch:
 # ---------------------------------------------------------------------------
 
 
-@lru_cache(maxsize=1)
+class RoadSegmentIndex:
+    """Columnar (CSR-style) index of road segments over surface cells.
+
+    One entry per deduplicated directed edge, in graph insertion order. The
+    previous representation stored a dict, a cell list and a nested
+    coordinate list PER SEGMENT: ~380k permanently reachable Python objects
+    (~100 MB) describing data that is actually five pointer lists plus three
+    flat arrays. Nothing about the CONTENT changed - same segment order, same
+    edge keys, same matched cell indices in the same order, same coordinates,
+    same lengths (pinned by backend/tests/test_delhi_memory_refactor.py).
+
+    ``edge_keys``/``road_ids``/``names``/``highways``/``osm_ids`` reference
+    the string/int objects already owned by the road graph, so the lists cost
+    8 bytes per entry and never re-box a JSON scalar (avoids numpy-scalar
+    leaking into API payloads too).
+    """
+
+    __slots__ = (
+        "edge_keys", "road_ids", "names", "highways", "osm_ids",
+        "lengths_m", "coords", "cell_offsets", "cells_flat",
+    )
+
+    def __init__(
+        self,
+        edge_keys: List[str],
+        road_ids: List[str],
+        names: List[str],
+        highways: List[str],
+        osm_ids: List[int],
+        lengths_m: np.ndarray,
+        coords: np.ndarray,
+        cell_offsets: np.ndarray,
+        cells_flat: np.ndarray,
+    ) -> None:
+        self.edge_keys = edge_keys
+        self.road_ids = road_ids
+        self.names = names
+        self.highways = highways
+        self.osm_ids = osm_ids
+        self.lengths_m = lengths_m
+        self.coords = coords
+        self.cell_offsets = cell_offsets
+        self.cells_flat = cells_flat
+
+    def __len__(self) -> int:
+        return len(self.edge_keys)
+
+    def row(self, i: int) -> dict:
+        """Row-wise view of segment ``i`` (test/reference helper)."""
+        start, stop = int(self.cell_offsets[i]), int(self.cell_offsets[i + 1])
+        cells = [int(c) for c in self.cells_flat[start:stop]]
+        return {
+            "edge_key": self.edge_keys[i],
+            "road_id": self.road_ids[i],
+            "name": self.names[i],
+            "highway": self.highways[i],
+            "length_m": float(self.lengths_m[i]),
+            "osm_id": self.osm_ids[i],
+            "cells": cells or None,
+            "coords": [[float(c) for c in self.coords[i][0]],
+                       [float(c) for c in self.coords[i][1]]],
+        }
+
+    def max_depth(self, depth_m: np.ndarray) -> np.ndarray:
+        """Per-segment maximum modelled depth (m); NaN where no cell matched.
+
+        Equivalent to ``max(depth_m[c] for c in cells)`` per segment, done as
+        one vectorised segmented reduction instead of ~76k Python generators.
+        """
+        starts = self.cell_offsets[:-1]
+        nonempty = np.flatnonzero(self.cell_offsets[1:] > starts)
+        out = np.full(starts.size, np.nan)
+        if nonempty.size:
+            # Cells are stored in segment order, so the span between two
+            # consecutive NON-EMPTY starts covers exactly the earlier
+            # segment's cells (any segments in between are empty).
+            out[nonempty] = np.maximum.reduceat(
+                depth_m[self.cells_flat], starts[nonempty]
+            )
+        return out
+
+
+@single_flight_cached
 def _road_match_index():
     """Road segments + graph junctions with surface-window cell mapping.
 
-    Returns (segments, junctions) where
-      segments: list of dicts (road_id, name, highway, midpoint cell or None,
-                length_m, coords) for EVERY directed edge (deduplicated by
-                geometry) of the Delhi road graph;
-      junctions: list of dicts (node_idx, lonlat, connecting road names) for
-                graph nodes with >= 3 connections (topological intersections).
+    Returns (RoadSegmentIndex, junctions) where the index covers EVERY
+    directed edge (deduplicated by geometry) of the Delhi road graph and
+    junctions is a list of dicts (node_idx, lonlat, connecting road names)
+    for graph nodes with >= 3 connections (topological intersections).
     """
     graph = get_road_graph()
     structure = get_surface_structure()
@@ -214,19 +294,64 @@ def _road_match_index():
     except Exception:  # pragma: no cover - rasterio/scipy always present
         cell_tree = None
 
-    def cells_near(utm_x: float, utm_y: float, radius_m: float) -> List[int]:
-        """Window-local indices of window cells within radius_m (documented
-        sample area: V1 matches the road/crossing AREA, not one point)."""
-        if cell_tree is None:
-            return []
-        idxs = cell_tree.query_ball_point([utm_x, utm_y], r=radius_m)
-        return [int(i) for i in idxs]
+    from rasterio.warp import transform as rio_transform  # noqa: F401
 
-    from rasterio.warp import transform as rio_transform
+    # Queries are issued in bounded batches: the KD-tree returns one Python
+    # list per query point, and asking for all ~227k at once materialised a
+    # transient object storm (the single biggest spike of a cold build).
+    BATCH_SEGMENTS = 4096
+
+    edge_keys: List[str] = []
+    road_ids: List[str] = []
+    names: List[str] = []
+    highways: List[str] = []
+    osm_ids: List[int] = []
+    lengths: List[float] = []
+    coord_flat: List[float] = []
+    cell_offsets: List[int] = [0]
+    cell_chunks: List[np.ndarray] = []
 
     seen_geo = set()
-    deduped_edges = []
-    coords_pts = []
+    batch: List[Tuple] = []  # (edge_key, ux0, uy0, ux1, uy1) - bounded
+
+    def flush_batch() -> None:
+        if not batch:
+            return
+        pts = np.empty((len(batch) * 3, 2), dtype=np.float64)
+        for k, (_key, ux0, uy0, ux1, uy1) in enumerate(batch):
+            pts[3 * k] = (ux0, uy0)
+            pts[3 * k + 1] = ((ux0 + ux1) / 2.0, (uy0 + uy1) / 2.0)
+            pts[3 * k + 2] = (ux1, uy1)
+        near = (
+            cell_tree.query_ball_point(pts, r=SAMPLE_RADIUS_M)
+            if cell_tree is not None
+            else [[] for _ in range(len(pts))]
+        )
+        flat = np.fromiter(
+            (int(c) for group in near for c in group),
+            dtype=np.int32,
+            count=sum(len(group) for group in near),
+        )
+        cell_chunks.append(flat)
+        pos = 0
+        for key, ux0, uy0, ux1, uy1 in batch:
+            edge = graph.edge_index[key]
+            geo = edge.coords_4326
+            edge_keys.append(key)
+            road_ids.append(edge.road_id)
+            names.append(edge.name)
+            highways.append(edge.highway)
+            osm_ids.append(edge.osm_id)
+            lengths.append(edge.length_m)
+            coord_flat.extend((geo[0][0], geo[0][1], geo[1][0], geo[1][1]))
+            # Documented sample area: V1 matches the road/crossing AREA
+            # (endpoint + midpoint + endpoint cells, in that order).
+            cell_offsets.append(
+                cell_offsets[-1] + len(near[pos]) + len(near[pos + 1]) + len(near[pos + 2])
+            )
+            pos += 3
+        batch.clear()
+
     for edge_key, edge in graph.edge_index.items():
         geo = edge.coords_4326
         gsig = (
@@ -238,33 +363,24 @@ def _road_match_index():
         seen_geo.add(gsig)
         ux0, uy0 = graph.node_xy[edge.u]
         ux1, uy1 = graph.node_xy[edge.v]
-        mx, my = (ux0 + ux1) / 2.0, (uy0 + uy1) / 2.0
-        deduped_edges.append((edge_key, edge, geo))
-        coords_pts.extend([[float(ux0), float(uy0)], [float(mx), float(my)], [float(ux1), float(uy1)]])
+        batch.append((edge_key, ux0, uy0, ux1, uy1))
+        if len(batch) >= BATCH_SEGMENTS:
+            flush_batch()
+    flush_batch()
 
-    all_near = (
-        cell_tree.query_ball_point(coords_pts, r=SAMPLE_RADIUS_M)
-        if cell_tree is not None and coords_pts
-        else [[]] * len(coords_pts)
+    segments = RoadSegmentIndex(
+        edge_keys=edge_keys,
+        road_ids=road_ids,
+        names=names,
+        highways=highways,
+        osm_ids=osm_ids,
+        lengths_m=np.asarray(lengths, dtype=np.float64),
+        coords=np.asarray(coord_flat, dtype=np.float64).reshape(-1, 2, 2),
+        cell_offsets=np.asarray(cell_offsets, dtype=np.int64),
+        cells_flat=(
+            np.concatenate(cell_chunks) if cell_chunks else np.empty(0, dtype=np.int32)
+        ),
     )
-
-    segments: List[dict] = []
-    for i, (edge_key, edge, geo) in enumerate(deduped_edges):
-        sample_cells = (
-            [int(c) for c in all_near[i * 3]]
-            + [int(c) for c in all_near[i * 3 + 1]]
-            + [int(c) for c in all_near[i * 3 + 2]]
-        )
-        segments.append({
-            "edge_key": edge_key,
-            "road_id": edge.road_id,
-            "name": edge.name,
-            "highway": edge.highway,
-            "length_m": edge.length_m,
-            "osm_id": edge.osm_id,
-            "cells": sample_cells or None,
-            "coords": [[geo[0][0], geo[0][1]], [geo[1][0], geo[1][1]]],
-        })
 
     # Junctions: nodes with >= 3 distinct connections (topological
     # intersections), sampled from the same graph the router uses.
@@ -274,7 +390,7 @@ def _road_match_index():
             connection_names.setdefault(node, set()).add(e.name)
 
     valid_junction_nodes = [
-        node for node, names in sorted(connection_names.items()) if len(names) >= 3
+        node for node, jnames in sorted(connection_names.items()) if len(jnames) >= 3
     ]
     j_pts = [
         [float(graph.node_xy[n][0]), float(graph.node_xy[n][1])]
@@ -289,12 +405,12 @@ def _road_match_index():
     junctions: List[dict] = []
     for idx, node in enumerate(valid_junction_nodes):
         lon, lat = graph.node_lonlat[node]
-        names = connection_names[node]
+        jnames = connection_names[node]
         cells = [int(c) for c in j_near[idx]]
         junctions.append({
             "node_idx": node,
             "lonlat": [lon, lat],
-            "roads": sorted(names)[:4],
+            "roads": sorted(jnames)[:4],
             "cells": cells or None,
         })
 
@@ -335,7 +451,7 @@ def _intensity_for_horizon(fetch: DelhiForecastFetch, horizon_idx: int) -> Tuple
 
 def _street_intelligence(step: V1DepthStep, structure, horizon: str) -> dict:
     """V1-style street + intersection intelligence from the depth grid."""
-    segments, junctions = _road_match_index()
+    index, junctions = _road_match_index()
     depth_m = step.depth_m
 
     roads_features = []
@@ -344,33 +460,36 @@ def _street_intelligence(step: V1DepthStep, structure, horizon: str) -> dict:
     flooded_length = 0.0
     max_street_depth = 0.0
 
-    for seg in segments:
-        cells = seg["cells"]
-        if not cells:
-            depth = None
-        else:
-            depth = float(max(depth_m[c] for c in cells))
+    # Segmented max over the CSR cell array replaces ~76k per-segment Python
+    # generators; NaN marks a segment with no matched cell (UNKNOWN).
+    seg_depth = index.max_depth(depth_m)
+    lengths = index.lengths_m
+    for i in np.flatnonzero(np.isfinite(seg_depth) & (seg_depth > 0.001)):
+        depth = float(seg_depth[i])
+        length_m = float(lengths[i])
         risk = classify_road_risk(depth)
-        if depth is not None and depth > 0.001:
-            flooded_length += seg["length_m"]
-            max_street_depth = max(max_street_depth, depth)
-            if risk in risk_counts:
-                risk_counts[risk] += 1
-        if depth is not None and depth > 0.015:
+        flooded_length += length_m
+        max_street_depth = max(max_street_depth, depth)
+        if risk in risk_counts:
+            risk_counts[risk] += 1
+        if depth > 0.015:
             props = {
-                "road_id": seg["road_id"],
-                "osm_id": seg["osm_id"],
-                "name": seg["name"],
-                "highway": seg["highway"],
+                "road_id": index.road_ids[i],
+                "osm_id": index.osm_ids[i],
+                "name": index.names[i],
+                "highway": index.highways[i],
                 "max_depth_m": round(depth, 3),
-                "flooded_length_m": round(seg["length_m"], 1),
+                "flooded_length_m": round(length_m, 1),
                 "risk_level": risk,
                 "provenance": "SIMULATED_MODEL_OUTPUT (V1 reference depth grid)",
             }
             roads_features.append({
                 "type": "Feature",
                 "properties": props,
-                "geometry": {"type": "LineString", "coordinates": seg["coords"]},
+                "geometry": {"type": "LineString", "coordinates": [
+                    [float(index.coords[i][0][0]), float(index.coords[i][0][1])],
+                    [float(index.coords[i][1][0]), float(index.coords[i][1][1])],
+                ]},
             })
             affected_roads.append(props)
 
@@ -672,13 +791,12 @@ def what_if_edge_depths(rainfall_mm_h: float) -> Dict[str, Optional[float]]:
     step = v1_depth_step_for_intensity(
         depth_mm=rainfall_mm_h, dt_h=1.0, timestep_index=0
     )
-    segments, _ = _road_match_index()
+    index, _ = _road_match_index()
     depth_m = step.depth_m
+    seg_depth = index.max_depth(depth_m)
     return {
-        seg["edge_key"]: (
-            float(max(depth_m[c] for c in seg["cells"])) if seg["cells"] else None
-        )
-        for seg in segments
+        edge_key: (None if not np.isfinite(d) else float(d))
+        for edge_key, d in zip(index.edge_keys, seg_depth)
     }
 
 
