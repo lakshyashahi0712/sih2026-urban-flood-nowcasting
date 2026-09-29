@@ -103,10 +103,19 @@ const DelhiApp = ({ theme }: { theme?: MapTheme } = {}) => {
 
   // LIVE forecast states: fetched once, cached; independent per-horizon
   // switching is instant (no refetch on horizon change).
+  // Overlapping loads are deduplicated per refresh-mode: the backend builds
+  // its heavy static structures on the first cold request, and two
+  // simultaneous cold loads (StrictMode double mount, a click while the
+  // first response is still in flight) used to double that peak and take the
+  // free-tier instance out of memory. Same request pattern, one flight.
+  const liveFlights = useRef<Map<string, Promise<void>>>(new Map());
   const loadLive = useCallback((refresh = false) => {
+    const flightKey = String(refresh);
+    const running = liveFlights.current.get(flightKey);
+    if (running) return running;
     setLiveLoading(true);
     setLiveError(null);
-    delhiApi
+    const flight = delhiApi
       .getLiveState(refresh)
       .then(async (res) => {
         if (res.rainfall_status === 'SYNTHETIC_FALLBACK') {
@@ -124,7 +133,12 @@ const DelhiApp = ({ theme }: { theme?: MapTheme } = {}) => {
         setLiveState(res);
       })
       .catch((err) => setLiveError(err instanceof Error ? err.message : 'live state unavailable'))
-      .finally(() => setLiveLoading(false));
+      .finally(() => {
+        liveFlights.current.delete(flightKey);
+        setLiveLoading(false);
+      });
+    liveFlights.current.set(flightKey, flight);
+    return flight;
   }, []);
 
   useEffect(() => {

@@ -23,6 +23,8 @@ from shapely.geometry import LineString, Point
 from shapely.strtree import STRtree
 from rasterio.warp import transform as rasterio_transform
 
+from backend.app.domain.delhi.single_flight import single_flight_cached
+
 _REPO_ROOT = Path(__file__).resolve().parents[5]
 ROADS_PATH = _REPO_ROOT / "backend" / "app" / "data" / "roads" / "delhi_kushak_roads.geojson"
 PROVENANCE_PATH = ROADS_PATH.with_suffix(".provenance.json")
@@ -47,9 +49,33 @@ ASSUMED_SPEEDS_KMH = {
 DEFAULT_SPEED_KMH = 25
 
 
-@dataclass(frozen=True)
+class _SegmentGeometry:
+    """Immutable endpoint pair for one physical road segment."""
+
+    __slots__ = ("a", "b")
+
+    def __init__(self, a: Tuple[float, float], b: Tuple[float, float]) -> None:
+        self.a = a
+        self.b = b
+
+    def coords(self, reverse: bool) -> Tuple[Tuple[float, float], Tuple[float, float]]:
+        return (self.b, self.a) if reverse else (self.a, self.b)
+
+
+@dataclass(frozen=True, slots=True)
 class SegmentEdge:
-    """One directed road segment (graph edge) with stable evidence identity."""
+    """One directed road segment (graph edge) with stable evidence identity.
+
+    ``slots=True`` is deliberate: the pilot network holds ~76k directed edges
+    and profiling showed the per-instance ``__dict__`` (not the geometry, not
+    the spatial index) dominated the graph's resident cost.
+
+    ``coords_4326`` is a property over a geometry object SHARED by the
+    forward and reverse edges of the same physical segment — one coordinate
+    representation per physical road, referenced by both traversal
+    directions, instead of two mirrored copies. Values are identical to the
+    previous per-edge tuples.
+    """
 
     edge_key: str  # stable id used for segment-level evidence lookups
     u: int
@@ -59,7 +85,12 @@ class SegmentEdge:
     name: str
     highway: str
     length_m: float
-    coords_4326: Tuple[Tuple[float, float], Tuple[float, float]]
+    geometry: _SegmentGeometry
+    reverse: bool
+
+    @property
+    def coords_4326(self) -> Tuple[Tuple[float, float], Tuple[float, float]]:
+        return self.geometry.coords(self.reverse)
 
 
 class DelhiRoadGraph:
@@ -109,22 +140,23 @@ class DelhiRoadGraph:
             for i in range(len(node_ids) - 1):
                 u, v = node_ids[i], node_ids[i + 1]
                 seg_len = max(math.hypot(xs[i + 1] - xs[i], ys[i + 1] - ys[i]), 0.001)
-                base = dict(
-                    osm_id=props.get("osm_id"),
-                    road_id=road_id,
-                    name=props.get("name") or "Unnamed road",
-                    highway=props.get("highway") or "unclassified",
-                    length_m=seg_len,
-                )
+                osm_id = props.get("osm_id")
+                road_name = props.get("name") or "Unnamed road"
+                highway = props.get("highway") or "unclassified"
+                # ONE geometry object for this physical segment; the reverse
+                # edge references it with reverse=True (no mirrored copy).
+                geometry = _SegmentGeometry((lons[i], lats[i]), (lons[i + 1], lats[i + 1]))
                 fwd = SegmentEdge(
                     edge_key=f"{road_id}:{u}:{v}", u=u, v=v,
-                    coords_4326=((lons[i], lats[i]), (lons[i + 1], lats[i + 1])),
-                    **base,
+                    osm_id=osm_id, road_id=road_id, name=road_name,
+                    highway=highway, length_m=seg_len,
+                    geometry=geometry, reverse=False,
                 )
                 rev = SegmentEdge(
                     edge_key=f"{road_id}:{v}:{u}", u=v, v=u,
-                    coords_4326=((lons[i + 1], lats[i + 1]), (lons[i], lats[i])),
-                    **base,
+                    osm_id=osm_id, road_id=road_id, name=road_name,
+                    highway=highway, length_m=seg_len,
+                    geometry=geometry, reverse=True,
                 )
                 if oneway == "yes":
                     self.adj[u].append(fwd)
@@ -175,9 +207,13 @@ class DelhiRoadGraph:
         return edge.length_m / (speed_kmh / 3.6)
 
 
-@lru_cache(maxsize=1)
+@single_flight_cached
 def get_road_graph() -> DelhiRoadGraph:
-    """Process-wide cached graph (static network metadata)."""
+    """Process-wide cached graph (static network metadata).
+
+    Single-flight: a cold build costs ~80 MB, so concurrent first-touch
+    requests must never build it more than once.
+    """
     return DelhiRoadGraph()
 
 

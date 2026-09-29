@@ -29,12 +29,12 @@ Differences from the literal V1 code (documented):
 from __future__ import annotations
 
 from dataclasses import dataclass
-from functools import lru_cache
 from typing import Dict, List, Optional, Tuple
 
 import numpy as np
 
 from backend.app.domain.delhi.surface import get_surface_structure
+from backend.app.domain.delhi.single_flight import single_flight_cached
 from backend.app.domain.delhi.scenarios.config import (
     ScenarioDefinition,
     classify_depth_cm,
@@ -53,7 +53,7 @@ CURB_INLET_SLOPE = 0.0006
 INLET_ROAD_MARGIN_M = 25.0  # cells within this distance of an OSM road host an inlet
 
 
-@lru_cache(maxsize=1)
+@single_flight_cached
 def inlet_cell_indices() -> np.ndarray:
     """Window cells within INLET_ROAD_MARGIN_M of an OSM road (V1 inlet
     convention with road-based inlets; roads are real OSM data)."""
@@ -419,16 +419,26 @@ V1_DEPTH_COLORS = {
 
 
 def depth_polygons_from_v1(
-    step, structure, min_depth_cm: float = 0.1
+    step, structure, min_depth_cm: float = 0.1, max_cells: int = 320
 ) -> dict:
     """Flooded cells as filled 30 m square polygons, colored by the V1
-    depth ramp - the raster-like flood-depth map layer (V1 parity)."""
+    depth ramp - the raster-like flood-depth map layer (V1 parity).
+
+    ``max_cells`` is the documented map-layer convention already used by
+    ``depth_cells_from_v1``: when more cells flood than the cap allows, the
+    DEEPEST cells are kept (never an arbitrary spatial truncation), and the
+    surviving features are emitted in the same cell-index order as before, so
+    every retained feature is byte-identical to the uncapped output.
+    """
     import rasterio
     import rasterio.warp as rw
 
     cand = np.flatnonzero(step.depth_m * 100.0 >= min_depth_cm)
     if cand.size == 0:
         return {"type": "FeatureCollection", "features": []}
+    if cand.size > max_cells:
+        deepest = cand[np.argsort(step.depth_m[cand])[::-1]][:max_cells]
+        cand = np.sort(deepest)
     rows = structure.window_rows[cand]
     cols = structure.window_cols[cand]
     xs, ys = rasterio.transform.xy(structure.transform, rows, cols, offset="center")
