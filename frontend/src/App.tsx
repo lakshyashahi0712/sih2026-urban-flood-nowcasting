@@ -8,10 +8,10 @@ type CityMode = 'DELHI_V2' | 'MUMBAI_V1';
 
 function App() {
   const [mode, setMode] = useState<CityMode>(() => {
-    if (typeof window !== 'undefined' && window.location.search.toLowerCase().includes('mumbai')) {
-      return 'MUMBAI_V1';
+    if (typeof window !== 'undefined' && window.location.search.toLowerCase().includes('delhi')) {
+      return 'DELHI_V2';
     }
-    return 'DELHI_V2';
+    return 'MUMBAI_V1';
   });
 
   const [theme, setTheme] = useState<MapTheme>(() => getInitialMapTheme());
