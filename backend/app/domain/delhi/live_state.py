@@ -67,6 +67,12 @@ LEAD_TIMES: Dict[str, str] = {"NOW": "0h", "+1h": "+1h", "+2h": "+2h", "+3h": "+
 # identical thresholds so both cities classify identically).
 ROAD_RISK_THRESHOLDS_M = {"CRITICAL": 0.60, "HIGH": 0.30, "MEDIUM": 0.15}
 
+# Minimum modelled depth change (m) between two consecutive replay timesteps
+# for a corridor to be called RISING or FALLING rather than STEADY. Kept at
+# half the documented hourly infiltration loss (4 mm/h) so a draining replay
+# reads as falling rather than flat.
+TREND_DELTA_M = 0.002
+
 
 def classify_road_risk(depth_m: Optional[float]) -> str:
     """V1 road-risk tiers from modelled depth. UNKNOWN never maps to NONE."""
@@ -449,20 +455,47 @@ def _intensity_for_horizon(fetch: DelhiForecastFetch, horizon_idx: int) -> Tuple
     return None, "UNKNOWN", None, None
 
 
-def _street_intelligence(step: V1DepthStep, structure, horizon: str) -> dict:
-    """V1-style street + intersection intelligence from the depth grid."""
+def _trend_label(delta_m: float, prev_depth_m: float) -> str:
+    """Direction of change for one corridor between two modelled states.
+
+    EMERGING marks a corridor that was dry (< 1 mm) in the previous state, so
+    a large first inundation is never reported as a mere 'RISING' delta.
+    """
+    if prev_depth_m <= 0.001:
+        return "EMERGING"
+    if delta_m > TREND_DELTA_M:
+        return "RISING"
+    if delta_m < -TREND_DELTA_M:
+        return "FALLING"
+    return "STEADY"
+
+
+def _street_intelligence(
+    step: V1DepthStep,
+    structure,
+    horizon: str,
+    prev_depth_m: Optional[np.ndarray] = None,
+) -> dict:
+    """V1-style street + intersection intelligence from the depth grid.
+
+    ``prev_depth_m`` (the previous replay timestep's grid) adds a per-road and
+    per-junction depth delta plus a RISING/FALLING/STEADY/EMERGING trend. Left
+    out entirely for single-state products (live horizons, scenarios).
+    """
     index, junctions = _road_match_index()
     depth_m = step.depth_m
 
     roads_features = []
     affected_roads = []
     risk_counts = {"CRITICAL": 0, "HIGH": 0, "MEDIUM": 0, "LOW": 0}
+    trend_counts = {"RISING": 0, "FALLING": 0, "STEADY": 0, "EMERGING": 0}
     flooded_length = 0.0
     max_street_depth = 0.0
 
     # Segmented max over the CSR cell array replaces ~76k per-segment Python
     # generators; NaN marks a segment with no matched cell (UNKNOWN).
     seg_depth = index.max_depth(depth_m)
+    prev_seg_depth = index.max_depth(prev_depth_m) if prev_depth_m is not None else None
     lengths = index.lengths_m
     for i in np.flatnonzero(np.isfinite(seg_depth) & (seg_depth > 0.001)):
         depth = float(seg_depth[i])
@@ -483,6 +516,13 @@ def _street_intelligence(step: V1DepthStep, structure, horizon: str) -> dict:
                 "risk_level": risk,
                 "provenance": "SIMULATED_MODEL_OUTPUT (V1 reference depth grid)",
             }
+            if prev_seg_depth is not None:
+                prev_val = float(prev_seg_depth[i])
+                delta = round(depth - prev_val, 3)
+                trend = _trend_label(delta, prev_val)
+                trend_counts[trend] += 1
+                props["depth_delta_m"] = delta
+                props["depth_trend"] = trend
             roads_features.append({
                 "type": "Feature",
                 "properties": props,
@@ -509,6 +549,11 @@ def _street_intelligence(step: V1DepthStep, structure, horizon: str) -> dict:
                 "connection_count": len(j["roads"]),
                 "provenance": "SIMULATED_MODEL_OUTPUT (V1 reference depth grid)",
             }
+            if prev_depth_m is not None:
+                prev_val = float(max(prev_depth_m[c] for c in cells))
+                delta = round(depth - prev_val, 3)
+                props["depth_delta_m"] = delta
+                props["depth_trend"] = _trend_label(delta, prev_val)
             intersections_features.append({
                 "type": "Feature",
                 "properties": props,
@@ -532,6 +577,7 @@ def _street_intelligence(step: V1DepthStep, structure, horizon: str) -> dict:
             "max_street_depth_m": round(max_street_depth, 3),
             "total_flooded_road_length_m": round(flooded_length, 1),
             "risk_counts": risk_counts,
+            **({"trend_counts": trend_counts} if prev_depth_m is not None else {}),
         },
         "affected_roads": affected_roads[:12],
         "affected_intersections": affected_intersections[:12],
@@ -547,6 +593,14 @@ def _street_intelligence(step: V1DepthStep, structure, horizon: str) -> dict:
             "matching": f"nearest surface cell within {MATCH_DISTANCE_M:.0f} m; "
                         "beyond that UNKNOWN (never 0 m)",
             "risk_thresholds": "V1 road-risk tiers 0.15/0.30/0.60 m (DEMO thresholds)",
+            **({
+                "trend": (
+                    "depth_delta_m = this timestep minus the previous replay "
+                    "timestep of the same modelled depth grid; STEADY within "
+                    f"±{TREND_DELTA_M} m. Modelled change between two model "
+                    "states — not an observed trend."
+                )
+            } if prev_depth_m is not None else {}),
         },
     }
 
