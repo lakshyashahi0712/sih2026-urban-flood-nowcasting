@@ -19,6 +19,7 @@ try:
     from backend.app.config import settings
     from backend.app.domain.pipeline.flood_pipeline import run_flood_modeling_pipeline
     from backend.app.api.rainfall import get_adapter
+    from backend.app.domain.rainfall.models import RainfallProvenance
     from backend.app.domain.roads.models import StreetFloodIntelligence
     from backend.app.domain.roads.spatial_matcher import match_flood_to_streets
     from backend.app.domain.historical.events.mumbai_2017 import get_mumbai_august_2017_event
@@ -27,6 +28,7 @@ except ImportError:
     from app.config import settings
     from app.domain.pipeline.flood_pipeline import run_flood_modeling_pipeline
     from app.api.rainfall import get_adapter
+    from app.domain.rainfall.models import RainfallProvenance
     from app.domain.roads.models import StreetFloodIntelligence
     from app.domain.roads.spatial_matcher import match_flood_to_streets
     from app.domain.historical.events.mumbai_2017 import get_mumbai_august_2017_event
@@ -331,6 +333,7 @@ async def compute_flood_forecast_evolution(
         source = "manual/test-override"
         acquired_at_str = datetime.now(timezone.utc).isoformat()
         status_str = "LIVE"
+        client_assisted = False
         now_dt = datetime.now(timezone.utc).replace(minute=0, second=0, microsecond=0)
         records_meta = []
         for i, val in enumerate(rainfall_mm_list):
@@ -355,6 +358,7 @@ async def compute_flood_forecast_evolution(
         source = series.source or "open-meteo"
         acquired_at_str = series.acquired_at.isoformat() if series.acquired_at else None
         status_str = series.records[0].status.value if series.records else "LIVE"
+        client_assisted = series.provenance == RainfallProvenance.NWP_CLIENT_ASSISTED
 
         records_meta = []
         for i in range(4):
@@ -418,7 +422,9 @@ async def compute_flood_forecast_evolution(
             horizon_states.append(state)
 
         elevation_label = "Copernicus GLO-30 DSM (30m)" if not is_temp else "Synthetic DEM (sloping plane prototype)"
-        if status_str == "LIVE":
+        if client_assisted:
+            rainfall_prov = "Open-Meteo hourly NWP (client-assisted ingest)"
+        elif status_str == "LIVE":
             rainfall_prov = "Weather forecast (Open-Meteo hourly NWP)"
         elif rainfall_mm_list is None and series.records and hasattr(series.records[0].provenance, "value"):
             rainfall_prov = series.records[0].provenance.value
@@ -471,6 +477,42 @@ async def post_flood_forecast(request: FloodForecastRequest):
         rainfall_mm_list=request.rainfall_mm_list,
         use_cache=request.use_cache
     )
+
+
+class ClientNwpIngestRequest(BaseModel):
+    """Hourly Open-Meteo depths that the client fetched over its own connection."""
+    rainfall_mm: List[float] = Field(
+        ...,
+        description="Hourly precipitation [mm] for NOW, +1h, +2h, +3h from the client's current IST hour",
+    )
+
+    @validator('rainfall_mm')
+    def validate_four_hours(cls, v):
+        if len(v) != 4:
+            raise ValueError("rainfall_mm must contain exactly 4 hourly values")
+        return v
+
+
+@router.post("/nwp-ingest")
+async def ingest_client_nwp(request: ClientNwpIngestRequest):
+    """Seed the NWP cache from the visitor's connection when our server's egress is rate-limited.
+
+    Open-Meteo meters quota per client IP, and Render's shared free-tier IPs hit that ceiling
+    long before our own traffic does, so the visitor's still-unused quota is the working path.
+    Ingested values are stored as CLIENT_ASSISTED, never as a forecast our server fetched.
+    """
+    adapter = get_adapter()
+    try:
+        series = adapter.ingest_client_forecast(request.rainfall_mm)
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e))
+
+    return {
+        "status": "ACCEPTED",
+        "provenance": series.provenance.value,
+        "acquired_at": series.acquired_at.isoformat(),
+        "horizon_starts_utc": [r.timestamp.isoformat() for r in series.records],
+    }
 
 
 class StreetForecastResponse(BaseModel):

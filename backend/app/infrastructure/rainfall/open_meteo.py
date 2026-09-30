@@ -2,8 +2,9 @@ from __future__ import annotations
 
 from datetime import datetime, timezone, timedelta
 import json
+import math
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Sequence
 from zoneinfo import ZoneInfo
 
 import httpx
@@ -43,6 +44,56 @@ FORECAST_DAYS = 2  # Assuming default forecast days, adjust if needed
 DEFAULT_TIMEOUT = 10.0
 CACHE_TTL_MINUTES = 30
 DEFAULT_FALLBACK_PATH = Path(__file__).resolve().parents[2] / "data" / "rainfall" / "mumbai_open_meteo_cached.json"
+
+# A client-assisted ingest carries the horizons the V1 surface models: NOW, +1h, +2h, +3h.
+CLIENT_INGEST_HOURS = 4
+# Rejects junk from a request we do not control without rejecting real Mumbai rain.
+CLIENT_INGEST_MAX_MM = 500.0
+
+
+def client_assisted_series_from_hourly_mm(mm_values: Sequence[float]) -> RainfallSeries:
+    """Build a LIVE series from hourly depths fetched over a client's own connection.
+
+    Open-Meteo meters quota per client IP, so a shared cloud egress IP can be exhausted by
+    unrelated deployments while every visitor still has quota of their own. The client asks
+    Open-Meteo in Asia/Kolkata, so the values are IST clock hours and are stamped that way.
+    """
+    values = list(mm_values)
+    if len(values) != CLIENT_INGEST_HOURS:
+        raise ValueError(f"client-assisted ingest needs exactly {CLIENT_INGEST_HOURS} hourly values")
+    for value in values:
+        mm = float(value)
+        if math.isnan(mm) or mm < 0.0 or mm > CLIENT_INGEST_MAX_MM:
+            raise ValueError(f"client-assisted ingest rejected rainfall value {value!r}")
+
+    acquired_at = datetime.now(timezone.utc)
+    hour_start_ist = acquired_at.astimezone(ZoneInfo(MUMBAI_TZ)).replace(
+        minute=0, second=0, microsecond=0
+    )
+
+    records = []
+    for i, value in enumerate(values):
+        timestamp = (hour_start_ist + timedelta(hours=i)).astimezone(timezone.utc)
+        lead_minutes = max(0, int((timestamp - acquired_at).total_seconds() // 60))
+        records.append(RainfallRecord(
+            timestamp=timestamp,
+            interval_end=timestamp + timedelta(hours=1),
+            rainfall_mm=float(value),
+            source="open-meteo",
+            source_type=SourceType.FORECAST,
+            resolution_minutes=60,
+            acquired_at=acquired_at,
+            forecast_lead_minutes=lead_minutes,
+            status=RainfallStatus.LIVE,
+            provenance=RainfallProvenance.NWP_CLIENT_ASSISTED,
+        ))
+
+    return RainfallSeries(
+        records=records,
+        source="open-meteo",
+        acquired_at=acquired_at,
+        provenance=RainfallProvenance.NWP_CLIENT_ASSISTED,
+    )
 
 
 class OpenMeteoCache:
@@ -239,6 +290,27 @@ class OpenMeteoAdapter:
         })
         return status
 
+    def ingest_client_forecast(self, mm_values: Sequence[float]) -> RainfallSeries:
+        """Seed the cache with a forecast the client fetched over its own connection."""
+        series = client_assisted_series_from_hourly_mm(mm_values)
+        cached = self.cache.get(allow_stale=False)
+        if cached is not None and not self._is_client_assisted(cached):
+            # Our server is reaching Open-Meteo fine right now, so its own fetch wins.
+            return cached
+        self.cache.set(series)
+        self.last_live_status = "CLIENT_ASSISTED"
+        self.last_live_error = None
+        self.last_live_acquired_at = series.acquired_at
+        return series
+
+    @staticmethod
+    def _is_client_assisted(series: RainfallSeries) -> bool:
+        return series.provenance == RainfallProvenance.NWP_CLIENT_ASSISTED
+
+    def _client_assisted_cache_is_fresh(self) -> bool:
+        cached = self.cache.get(allow_stale=False)
+        return cached is not None and self._is_client_assisted(cached)
+
     async def fetch(self, use_cache: bool = False) -> RainfallSeries:
         """Fetch rainfall data from Open-Meteo API.
 
@@ -259,6 +331,10 @@ class OpenMeteoAdapter:
             RainfallAdapterInvalidTimestamp: If a timestamp cannot be parsed.
         """
         if use_cache:
+            if self._client_assisted_cache_is_fresh():
+                # The client already supplied this window; re-asking Open-Meteo from a
+                # rate-limited egress IP would only burn requests for nothing.
+                return self.cache.get(allow_stale=False)
             # Try to get live data first
             try:
                 live_data = await self._fetch_live()
@@ -404,16 +480,20 @@ class OpenMeteoAdapter:
 
     def _make_stale_series(self, series: RainfallSeries) -> RainfallSeries:
         """Return a new series with the same data but status set to STALE."""
+        if self._is_client_assisted(series):
+            provenance = RainfallProvenance.NWP_CLIENT_ASSISTED
+        else:
+            provenance = getattr(RainfallProvenance, "FALLBACK_CACHED_FORECAST", RainfallProvenance.NWP_FALLBACK)
         new_records = []
         for record in series.records:
             new_record = record.model_copy(update={
                 "status": RainfallStatus.STALE,
-                "provenance": getattr(RainfallProvenance, "FALLBACK_CACHED_FORECAST", RainfallProvenance.NWP_FALLBACK),
+                "provenance": provenance,
             })
             new_records.append(new_record)
         return RainfallSeries(
             records=new_records,
             source=series.source,
             acquired_at=series.acquired_at,
-            provenance=getattr(RainfallProvenance, "FALLBACK_CACHED_FORECAST", RainfallProvenance.NWP_FALLBACK),
+            provenance=provenance,
         )
