@@ -3,6 +3,7 @@ import { Map as MapLibreMap, GeoJSONSource, NavigationControl, Popup, setWorkerU
 import 'maplibre-gl/dist/maplibre-gl.css';
 import workerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url';
 import { apiUrl } from '../api/config';
+import { fetchClientNwpRainfall, postClientNwpIngest } from '../api/clientNwp';
 import { getBasemapStyle, type MapTheme } from '../config/mapStyles';
 
 setWorkerUrl(workerUrl);
@@ -297,6 +298,10 @@ const FloodMap = ({ theme }: FloodMapProps = {}) => {
   const [horizons, setHorizons] = useState<HorizonData[]>(DEFAULT_HORIZONS);
   const [rainfallStatus, setRainfallStatus] = useState<'LIVE' | 'STALE' | 'UNAVAILABLE'>('UNAVAILABLE');
   const [rainfallAcquiredAt, setRainfallAcquiredAt] = useState<string | null>(null);
+  const [rainfallProvenance, setRainfallProvenance] = useState<string | null>(null);
+  const rainfallLabel = rainfallProvenance?.includes('client-assisted')
+    ? `${rainfallStatus} · client-assisted`
+    : rainfallStatus;
   const [forecastData, setForecastData] = useState<FloodForecastAPIResponse | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
@@ -685,15 +690,32 @@ const FloodMap = ({ theme }: FloodMapProps = {}) => {
       if (!res.ok) {
         throw new Error(`Flood forecast API returned HTTP ${res.status}`);
       }
-      const data: FloodForecastAPIResponse = await res.json();
+      let data: FloodForecastAPIResponse = await res.json();
       if (!data.horizons || !Array.isArray(data.horizons) || data.horizons.length === 0) {
         throw new Error('Received empty forecast horizons from backend');
+      }
+
+      if (data.status !== 'LIVE') {
+        // Open-Meteo meters per client IP, so our server's shared cloud egress can be capped
+        // while the visitor's own connection still has quota. Borrow that connection, hand the
+        // series back, and re-read the forecast.
+        const clientMm = await fetchClientNwpRainfall();
+        if (clientMm && (await postClientNwpIngest(clientMm))) {
+          const retry = await fetch(apiUrl('/flood/forecast?use_cache=true'));
+          if (retry.ok) {
+            const assisted: FloodForecastAPIResponse = await retry.json();
+            if (Array.isArray(assisted.horizons) && assisted.horizons.length > 0) {
+              data = assisted;
+            }
+          }
+        }
       }
 
       setForecastData(data);
       forecastDataRef.current = data;
       setRainfallStatus((data.status as 'LIVE' | 'STALE') || 'LIVE');
       setRainfallAcquiredAt(data.acquired_at || null);
+      setRainfallProvenance(data.provenance?.rainfall || null);
 
       const periodDisplays: Record<ForecastHorizon, string> = {
         'NOW': 'Current Hour Baseline',
@@ -1815,7 +1837,7 @@ const FloodMap = ({ theme }: FloodMapProps = {}) => {
             ) : (
               <>
                 <span className="meta-label text-xs font-normal">SOURCE:</span>
-                <span className="meta-val text-sm font-medium">Open-Meteo NWP ({rainfallStatus})</span>
+                <span className="meta-val text-sm font-medium">Open-Meteo NWP ({rainfallLabel})</span>
                 <span className="meta-divider">•</span>
                 <span className="meta-label text-xs font-normal">ACQUIRED:</span>
                 <span className="meta-val text-sm font-medium">
@@ -2454,7 +2476,7 @@ const FloodMap = ({ theme }: FloodMapProps = {}) => {
                     ? 'SECONDARY-REPORT (Literature)'
                     : isScenarioMode
                     ? 'Hypothetical model input'
-                    : `Open-Meteo NWP (${rainfallStatus})`}
+                    : `Open-Meteo NWP (${rainfallLabel})`}
                 </span>
               </div>
               <div className="provenance-item">
