@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import DelhiMap, { type MapFlowState, type RoutePickPoint } from './DelhiMap';
 import { type MapTheme } from '../../config/mapStyles';
-import ReplayPanel from './ReplayPanel';
+import ReplayControls from './ReplayControls';
 import EvidencePanel from './EvidencePanel';
 import RoutePanel from './RoutePanel';
 import ModelPanel from './ModelPanel';
@@ -13,6 +13,7 @@ import {
   type DrainageGraphResponse,
   type LiveStateResponse,
   type SafeRouteResponse,
+  type StreetsIntel,
   type SurfaceHotspot,
   type WhatIfResponse,
 } from '../../api/delhi';
@@ -85,12 +86,22 @@ const DelhiApp = ({ theme }: { theme?: MapTheme } = {}) => {
   const [routeHudOpen, setRouteHudOpen] = useState(false);
   const [routeLoading, setRouteLoading] = useState(false);
   const [routeError, setRouteError] = useState<string | null>(null);
+  // Current replay selection (event + timestep), reported by ReplayControls.
+  // Historical safe routes are computed against exactly this state.
+  const [replayContext, setReplayContext] = useState<{ eventId: string; timestepIndex: number }>({
+    eventId: 'EVT-2024-06-27',
+    timestepIndex: 0,
+  });
   const [drainageGraph, setDrainageGraph] = useState<DrainageGraphResponse | null>(null);
   const [surfaceHotspots, setSurfaceHotspots] = useState<SurfaceHotspot[]>([]);
   const [depthCells, setDepthCells] = useState<
     { lon: number; lat: number; depth_cm: number; flood_state: string; provenance: string }[]
   >([]);
   const [depthPolygons, setDepthPolygons] = useState<{ type: string; features: unknown[] } | null>(null);
+  // REPLAY: street/intersection intelligence of the current replay timestep,
+  // including each corridor's change vs the previous timestep (V1 replay roads
+  // plus an increasing/decreasing indicator).
+  const [replayStreets, setReplayStreets] = useState<StreetsIntel | null>(null);
   const [scenarioRoadDepths, setScenarioRoadDepths] = useState<
     Record<string, { depth_cm: number; depth_m: number; flood_state: string }> | null
   >(null);
@@ -161,7 +172,10 @@ const DelhiApp = ({ theme }: { theme?: MapTheme } = {}) => {
     [liveState, horizon],
   );
 
-  // Reset map overlays when switching workflows.
+  // Reset map overlays when switching workflows. Route picks are KEPT
+  // across modes (V1 behaviour): switching LIVE ↔ REPLAY recomputes the
+  // same origin/destination against the new mode's state instead of
+  // dumping the user back into the live forecast.
   const switchMode = (next: Mode) => {
     setMode(next);
     setMapFlow(EMPTY_FLOW);
@@ -170,28 +184,50 @@ const DelhiApp = ({ theme }: { theme?: MapTheme } = {}) => {
     setDepthPolygons(null);
     setSurfaceHotspots([]);
     setScenarioRoadDepths(null);
-    if (next !== 'LIVE') {
-      setRouteResult(null);
-      setRoutePicks({ origin: null, destination: null });
+    setReplayStreets(null);
+    setRouteResult(null);
+    setRouteError(null);
+    setRouteLoading(false);
+    const hasPicks = routePicks.origin !== null && routePicks.destination !== null;
+    if (next === 'LIVE' || next === 'REPLAY') {
+      if (hasPicks) {
+        setRouteHudOpen(true);
+        // REPLAY recomputation is driven by the replay-context effect below.
+        if (next === 'LIVE') {
+          void fetchSafeRoute(routePicks.origin!.coords, routePicks.destination!.coords, {
+            mode: 'live',
+          });
+        }
+      }
+    } else {
       setRouteHudOpen(false);
-      setRouteLoading(false);
-      setRouteError(null);
     }
-    if (next === 'LIVE') setRouteHudOpen(routePicks.origin !== null);
   };
 
   const fetchSafeRoute = useCallback(
-    async (origin: [number, number], destination: [number, number]) => {
+    async (
+      origin: [number, number],
+      destination: [number, number],
+      context?: { mode: 'live' | 'historical'; replay?: { eventId: string; timestepIndex: number } | null },
+    ) => {
       setRouteLoading(true);
       setRouteError(null);
       try {
-        const departureHour = Math.max(0, HORIZONS.indexOf(horizon));
-        const res = await delhiApi.getSafeRoute({
-          origin,
-          destination,
-          mode: 'live',
-          departure_hour: departureHour,
-        });
+        const res =
+          context?.mode === 'historical' && context.replay
+            ? await delhiApi.getSafeRoute({
+                origin,
+                destination,
+                mode: 'historical',
+                event_id: context.replay.eventId,
+                timestep_index: context.replay.timestepIndex,
+              })
+            : await delhiApi.getSafeRoute({
+                origin,
+                destination,
+                mode: 'live',
+                departure_hour: Math.max(0, HORIZONS.indexOf(horizon)),
+              });
         setRouteResult(res);
       } catch (err) {
         const msg = err instanceof Error ? err.message : 'Route calculation failed';
@@ -203,6 +239,43 @@ const DelhiApp = ({ theme }: { theme?: MapTheme } = {}) => {
     },
     [horizon],
   );
+
+  const routeContext = useCallback(
+    (): { mode: 'live' | 'historical'; replay?: { eventId: string; timestepIndex: number } | null } =>
+      mode === 'REPLAY' ? { mode: 'historical', replay: replayContext } : { mode: 'live' },
+    [mode, replayContext],
+  );
+
+  // ReplayControls reports its (event, timestep); identity-stable so the
+  // panel's reporting effect never re-runs because of us.
+  const handleReplayContext = useCallback(
+    (ctx: { eventId: string; timestepIndex: number }) => {
+      setReplayContext((prev) =>
+        prev.eventId === ctx.eventId && prev.timestepIndex === ctx.timestepIndex ? prev : ctx,
+      );
+    },
+    [],
+  );
+
+  // V1-style: moving the replay clock recomputes an active historical route
+  // against the new timestep. Guarded by the route's own event/timestep so
+  // a completed fetch can never re-trigger itself.
+  useEffect(() => {
+    if (mode !== 'REPLAY') return;
+    if (!routePicks.origin || !routePicks.destination) return;
+    if (
+      routeResult &&
+      routeResult.mode === 'HISTORICAL' &&
+      routeResult.event_id === replayContext.eventId &&
+      routeResult.timestep_index === replayContext.timestepIndex
+    )
+      return;
+    if (routeResult && routeResult.mode !== 'HISTORICAL') return;
+    void fetchSafeRoute(routePicks.origin.coords, routePicks.destination.coords, {
+      mode: 'historical',
+      replay: replayContext,
+    });
+  }, [mode, replayContext, routeResult, routePicks, fetchSafeRoute]);
 
   const handleExitRouting = useCallback(() => {
     setRouteHudOpen(false);
@@ -220,7 +293,7 @@ const DelhiApp = ({ theme }: { theme?: MapTheme } = {}) => {
       setRoutePicks((prev) => ({ ...prev, origin: newOrigin }));
       if (routePicks.destination) {
         setRoutePick(null);
-        void fetchSafeRoute(lonlat, routePicks.destination.coords);
+        void fetchSafeRoute(lonlat, routePicks.destination.coords, routeContext());
       } else {
         setRoutePick('destination');
       }
@@ -229,7 +302,7 @@ const DelhiApp = ({ theme }: { theme?: MapTheme } = {}) => {
       setRoutePicks((prev) => ({ ...prev, destination: newDest }));
       setRoutePick(null);
       if (routePicks.origin) {
-        void fetchSafeRoute(routePicks.origin.coords, lonlat);
+        void fetchSafeRoute(routePicks.origin.coords, lonlat, routeContext());
       } else {
         setRoutePick('origin');
       }
@@ -263,6 +336,7 @@ const DelhiApp = ({ theme }: { theme?: MapTheme } = {}) => {
         : 'Documented event forcing';
 
   const syntheticFallback = liveState?.rainfall_status === 'SYNTHETIC_FALLBACK';
+  const routeRoutingActive = (mode === 'LIVE' || mode === 'REPLAY') && routeHudOpen;
 
   return (
     <div className="flood-app">
@@ -384,9 +458,9 @@ const DelhiApp = ({ theme }: { theme?: MapTheme } = {}) => {
       <div className="map-workspace">
         <DelhiMap
           flowState={mapFlow}
-          routeResult={mode === 'LIVE' ? routeResult : null}
+          routeResult={mode === 'LIVE' || mode === 'REPLAY' ? routeResult : null}
           routePicks={routePicks}
-          pickTarget={mode === 'LIVE' ? routePick : null}
+          pickTarget={mode === 'LIVE' || mode === 'REPLAY' ? routePick : null}
           onMapClick={handleMapClick}
           drainageGraph={drainageGraph}
           surfaceHotspots={surfaceHotspots}
@@ -404,7 +478,7 @@ const DelhiApp = ({ theme }: { theme?: MapTheme } = {}) => {
               ? activeHorizonState?.streets ?? null
               : mode === 'SCENARIO'
                 ? scenarioState?.streets ?? null
-                : null
+                : replayStreets
           }
           theme={theme}
         />
@@ -548,6 +622,24 @@ const DelhiApp = ({ theme }: { theme?: MapTheme } = {}) => {
                 </div>
               </>
             )}
+
+            {/* HISTORICAL REPLAY CONTROLS (V1 block, same slot as V1) */}
+            {mode === 'REPLAY' && !evidenceOpen && (
+              <ReplayControls
+                onMapState={setMapFlow}
+                onDepthCells={setDepthCells}
+                onDepthPolygons={setDepthPolygons}
+                onStreets={setReplayStreets}
+                onReplayContext={handleReplayContext}
+              />
+            )}
+            {!evidenceOpen && mode === 'REPLAY' && replayStreets && (
+              <StreetIntelCard
+                streets={replayStreets}
+                modeLabel="REPLAY"
+                hourLabel={replayStreets.horizon}
+              />
+            )}
           </div>
 
             {/* MAP EXTENT CONTROLS (V1: inside the left stack) */}
@@ -574,11 +666,13 @@ const DelhiApp = ({ theme }: { theme?: MapTheme } = {}) => {
               </button>
               <button
                 type="button"
-                className={`extent-btn routing-btn ${mode === 'LIVE' && routeHudOpen ? 'active' : ''}`}
+                className={`extent-btn routing-btn ${routeRoutingActive ? 'active' : ''}`}
                 onClick={() => {
-                  if (mode !== 'LIVE') switchMode('LIVE');
+                  // V1 behaviour: routing works in LIVE and REPLAY without
+                  // leaving the current workflow.
+                  if (mode !== 'LIVE' && mode !== 'REPLAY') return;
                   setRouteHudOpen((open) => {
-                    const next = mode === 'LIVE' ? !open : true;
+                    const next = !open;
                     if (next) {
                       setMobileDrawerExpanded(false);
                       if (!routePicks.origin) {
@@ -594,7 +688,7 @@ const DelhiApp = ({ theme }: { theme?: MapTheme } = {}) => {
                 }}
                 title="Toggle Flood-Safe Route Finder (click map origin & destination)"
               >
-                SAFE ROUTE {mode === 'LIVE' && routeHudOpen ? '●' : ''}
+                SAFE ROUTE {routeRoutingActive ? '●' : ''}
               </button>
             </div>
 
@@ -723,13 +817,6 @@ const DelhiApp = ({ theme }: { theme?: MapTheme } = {}) => {
                 />
               </>
             )}
-            {!evidenceOpen && mode === 'REPLAY' && (
-              <ReplayPanel
-                onMapState={setMapFlow}
-                onDepthCells={setDepthCells}
-                onDepthPolygons={setDepthPolygons}
-              />
-            )}
 
             {/* PROVENANCE CARD (V1 data status & provenance — inside the left stack) */}
             <ProvenanceCard
@@ -741,8 +828,8 @@ const DelhiApp = ({ theme }: { theme?: MapTheme } = {}) => {
           </div>
         </div>
 
-        {/* SAFE-ROUTE HUD (V1 floating panel; LIVE mode) */}
-        {mode === 'LIVE' && routeHudOpen && (
+        {/* SAFE-ROUTE HUD (V1 floating panel; LIVE + REPLAY modes) */}
+        {routeRoutingActive && (
           <SafeRouteHud
             picks={routePicks}
             routeResult={routeResult}
@@ -754,11 +841,15 @@ const DelhiApp = ({ theme }: { theme?: MapTheme } = {}) => {
             onPreset={(o, d) => {
               setRoutePicks({ origin: { coords: o }, destination: { coords: d } });
               setRoutePick(null);
-              void fetchSafeRoute(o, d);
+              void fetchSafeRoute(o, d, routeContext());
             }}
             onRetry={() => {
               if (routePicks.origin && routePicks.destination) {
-                void fetchSafeRoute(routePicks.origin.coords, routePicks.destination.coords);
+                void fetchSafeRoute(
+                  routePicks.origin.coords,
+                  routePicks.destination.coords,
+                  routeContext(),
+                );
               }
             }}
           />
@@ -793,24 +884,38 @@ type AffectedRoad = NonNullable<
   LiveStateResponse['horizons'][number]['streets']
 >['affected_roads'][number];
 
+const TREND_META: Record<string, { icon: string; label: string; color: string }> = {
+  RISING: { icon: '▲', label: 'Rising', color: '#b91c1c' },
+  FALLING: { icon: '▼', label: 'Falling', color: '#1d4ed8' },
+  STEADY: { icon: '＝', label: 'Steady', color: '#6b7280' },
+  EMERGING: { icon: '↑', label: 'Newly flooded', color: '#9333ea' },
+};
+
 const StreetIntelCard = ({
   streets,
   modeLabel,
+  hourLabel = null,
 }: {
   streets: {
     summary: StreetsSummary;
     affected_roads: AffectedRoad[];
     provenance: Record<string, string>;
   };
-  modeLabel: 'LIVE' | 'SCENARIO';
+  modeLabel: 'LIVE' | 'SCENARIO' | 'REPLAY';
+  hourLabel?: string | null;
 }) => {
   const s = streets.summary;
+  const trends = 'trend_counts' in s ? (s.trend_counts ?? null) : null;
   return (
     <div className="street-intelligence-panel">
       <div className="street-panel-header">
         <div className="street-header-title">
           <span className="street-title-icon">🛣️</span>{' '}
-          {modeLabel === 'LIVE' ? 'STREET FLOOD RISK' : 'SCENARIO STREET RISK'}
+          {modeLabel === 'LIVE'
+            ? 'STREET FLOOD RISK'
+            : modeLabel === 'REPLAY'
+              ? `REPLAY STREET FLOOD${hourLabel ? ` • ${hourLabel}` : ''}`
+              : 'SCENARIO STREET RISK'}
         </div>
         <span className="prov-tag tag-modelled" style={{ fontSize: '9px', padding: '2px 6px', background: '#fef3c7', color: '#92400e' }}>
           Modelled (V1 depth grid)
@@ -838,8 +943,18 @@ const StreetIntelCard = ({
             {s.risk_counts.MEDIUM > 0 && <span className="risk-pill medium">{s.risk_counts.MEDIUM} Moderate</span>}
             {s.risk_counts.LOW > 0 && <span className="risk-pill low">{s.risk_counts.LOW} Low</span>}
           </div>
+          {trends && (trends.RISING + trends.FALLING + trends.EMERGING > 0 || trends.STEADY > 0) && (
+            <div className="street-risk-pills" title="Change of modelled corridor depth vs the previous replay timestep (not observed)">
+              {trends.EMERGING > 0 && <span className="risk-pill" style={{ background: '#f3e8ff', color: '#6b21a8' }}>↑ {trends.EMERGING} newly flooded</span>}
+              {trends.RISING > 0 && <span className="risk-pill" style={{ background: '#fee2e2', color: '#b91c1c' }}>▲ {trends.RISING} rising</span>}
+              {trends.FALLING > 0 && <span className="risk-pill" style={{ background: '#dbeafe', color: '#1d4ed8' }}>▼ {trends.FALLING} falling</span>}
+              {trends.STEADY > 0 && <span className="risk-pill" style={{ background: '#f1f5f9', color: '#475569' }}>＝ {trends.STEADY} steady</span>}
+            </div>
+          )}
           <div className="street-affected-list">
-            <div className="list-title">KEY IMPACTED CORRIDORS</div>
+            <div className="list-title">
+              {modeLabel === 'REPLAY' ? 'CORRIDOR DEPTH VS PREVIOUS HOUR' : 'KEY IMPACTED CORRIDORS'}
+            </div>
             {streets.affected_roads.slice(0, 3).map((r, i) => (
               <div key={`${r.road_id}-${i}`} className="affected-street-item">
                 <div className="street-item-left">
@@ -851,6 +966,22 @@ const StreetIntelCard = ({
                 <div className="street-item-right">
                   <span className={`street-risk-tag risk-${r.risk_level.toLowerCase()}`}>{r.risk_level}</span>
                   <span className="street-depth-tag">{r.max_depth_m.toFixed(2)}m</span>
+                  {r.depth_trend && (
+                    <span
+                      className="street-depth-tag"
+                      style={{ color: TREND_META[r.depth_trend]?.color ?? '#475569' }}
+                      title={`Modelled change vs the previous replay timestep: ${
+                        r.depth_delta_m !== undefined
+                          ? `${(r.depth_delta_m * 100).toFixed(1)} cm`
+                          : r.depth_trend
+                      }`}
+                    >
+                      {TREND_META[r.depth_trend]?.icon ?? '•'}{' '}
+                      {r.depth_delta_m !== undefined
+                        ? `${r.depth_delta_m > 0 ? '+' : ''}${(r.depth_delta_m * 100).toFixed(1)}cm`
+                        : (TREND_META[r.depth_trend]?.label ?? '')}
+                    </span>
+                  )}
                 </div>
               </div>
             ))}
@@ -868,6 +999,8 @@ const StreetIntelCard = ({
       <div className="street-panel-provenance">
         OSM roads/junctions matched to the modelled depth grid • Not municipal road sensors • UNKNOWN
         beyond the match distance, never 0 m
+        {trends &&
+          ' • ▲/▼ depth change vs the previous replay timestep of the same model, not observed'}
       </div>
     </div>
   );

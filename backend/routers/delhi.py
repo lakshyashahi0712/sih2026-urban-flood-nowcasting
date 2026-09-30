@@ -129,7 +129,16 @@ from backend.app.domain.delhi.scenarios.depth_v1 import (
     scenario_v1_depth_steps,
 )
 from backend.app.domain.delhi.scenarios.config import ScenarioDefinition, StormTemporalProfile
-from backend.app.domain.delhi.surface import get_surface_structure
+from backend.app.domain.delhi.surface import (
+    get_surface_structure,
+    INFILTRATION_MM_H,
+)
+from backend.app.domain.delhi.historical_completion import (
+    ArchiveUnavailable,
+    completion_reference,
+    fetch_event_day_hourly,
+)
+from backend.app.domain.delhi.nowcast import IST as _IST
 from backend.app.domain.delhi.digital_twin.kushak_hydraulic_state_classification import (
     classify_chain_timestep,
 )
@@ -483,10 +492,116 @@ def _serialize_member_execution(ex, profile_meta_note: str = "") -> Dict[str, An
     }
 
 
+def _replay_completion_block(
+    event_id: str, resolved: Optional[str], profile
+) -> Dict[str, Any]:
+    """24 hourly forcing bins spanning the event day (IST), for the V1-style
+    24-step replay clock.
+
+    Priority: documented catalog hours always win; every other hour is
+    completed from the Open-Meteo HISTORICAL ARCHIVE (real reanalysis,
+    labeled NWP_HISTORICAL_COMPLETION - a model value, never an
+    observation). Hours neither source can supply stay UNKNOWN (never
+    invented, never zero-filled). Cached per event: historical archive
+    days are immutable."""
+    cache_key = f"completion:{event_id}"
+    if cache_key in _REPLAY_CACHE:
+        return _REPLAY_CACHE[cache_key]
+
+    series = replay_harness.build_event_forcing_series(
+        catalog_event_id=event_id,
+        canonical_event_id=resolved,
+        forcing_profile=profile,
+    )
+    first_local = series.anchor_start.astimezone(_IST)
+    day = first_local.date()
+    doc_start_hour = first_local.hour
+    n = len(profile.bins)
+
+    hourly_profile = all(
+        replay_harness._bin_interval_hours(b) == 1.0 for b in profile.bins
+    )
+    archive: Optional[Dict[int, Optional[float]]] = None
+    diagnostics: List[str] = []
+    if not hourly_profile:
+        status = "NOT_APPLICABLE"
+        diagnostics.append(
+            "catalog bins are coarser than 1 hour; hourly completion is not alignable"
+        )
+    else:
+        try:
+            archive = fetch_event_day_hourly(day)
+            status = "COMPUTED"
+        except ArchiveUnavailable as exc:
+            status = "UNAVAILABLE"
+            diagnostics.append(str(exc))
+
+    bins: List[Dict[str, Any]] = []
+    for h in range(24):
+        lead = h - doc_start_hour
+        t_start = datetime(day.year, day.month, day.day, h, tzinfo=_IST).astimezone(
+            timezone.utc
+        )
+        entry: Dict[str, Any] = {"hour_of_day": h, "time_start": _iso(t_start)}
+        if 0 <= lead < n:
+            depth = replay_harness._bin_depth_mm(
+                profile.bins[lead], replay_harness._bin_interval_hours(profile.bins[lead])
+            )
+            if depth is not None:
+                entry.update({
+                    "depth_mm": depth,
+                    "units": "mm/h",
+                    "provenance": profile.bins[lead].provenance.value,
+                    "source": "DOCUMENTED_CATALOG",
+                })
+        if "provenance" not in entry:
+            av = archive.get(h) if archive is not None else None
+            if av is not None:
+                entry.update({
+                    "depth_mm": round(av, 2),
+                    "units": "mm/h",
+                    "provenance": "NWP_HISTORICAL_COMPLETION",
+                    "source": "OPEN_METEO_ARCHIVE",
+                })
+            else:
+                entry.update({
+                    "depth_mm": None,
+                    "units": "mm/h",
+                    "provenance": "UNKNOWN",
+                    "source": "DOCUMENTED_CATALOG" if 0 <= lead < n else "NO_SOURCE",
+                })
+        bins.append(entry)
+
+    block = {
+        "status": status,
+        "event_day_ist": day.isoformat(),
+        "documented_start_hour_ist": doc_start_hour,
+        "documented_bin_count": n,
+        "reference": completion_reference(),
+        "bins": bins,
+        "diagnostics": diagnostics,
+        "acquired_at": _iso(datetime.now(timezone.utc)),
+        "claim_policy": (
+            "NWP_HISTORICAL_COMPLETION bins are Open-Meteo historical "
+            "reanalysis MODEL values, never observations. Documented catalog "
+            "hours always take priority over completion. Hours neither source "
+            "supplies stay UNKNOWN - never invented, never zero-filled."
+        ),
+    }
+    if status == "COMPUTED":
+        _REPLAY_CACHE[cache_key] = block
+    return block
+
+
 @router.get("/events/{event_id}/replay")
 def get_event_replay(
     event_id: str,
     refresh: bool = Query(False, description="Force re-execution of the deterministic replay"),
+    complete_24h: bool = Query(
+        False,
+        description="Attach the 24-h NWP-completed event-day forcing block "
+        "(Open-Meteo historical archive; documented catalog hours keep priority)",
+    ),
 ) -> Dict[str, Any]:
     """Genuine event-specific runtime replay for ONE catalogue event.
 
@@ -502,7 +617,18 @@ def get_event_replay(
 
     cache_key = f"detail:{event_id}"
     if not refresh and cache_key in _REPLAY_CACHE:
-        return _REPLAY_CACHE[cache_key]
+        cached = _REPLAY_CACHE[cache_key]
+        if complete_24h and cached.get("forcing"):
+            blk_resolved = resolve_event_id(event_id)
+            blk_profile = get_forcing_for_event(blk_resolved) if blk_resolved else None
+            if blk_profile is not None:
+                return {
+                    **cached,
+                    "forcing_completion": _replay_completion_block(
+                        event_id, blk_resolved, blk_profile
+                    ),
+                }
+        return cached
 
     rows = _event_catalog_rows()
     catalog_row = rows[event_id]
@@ -615,6 +741,13 @@ def get_event_replay(
         ),
     })
     _REPLAY_CACHE[cache_key] = response
+    if complete_24h:
+        response = {
+            **response,
+            "forcing_completion": _replay_completion_block(
+                event_id, resolved, forcing_profile
+            ),
+        }
     return response
 
 
@@ -622,14 +755,22 @@ def get_event_replay(
 def get_event_depth_grid(
     event_id: str,
     timestep_index: int = Query(0, ge=0, description="forcing bin index"),
+    complete_24h: bool = Query(
+        False,
+        description="Run the V1 depth replay on the 24-h NWP-completed "
+        "event-day forcing instead of the documented-only bins",
+    ),
 ) -> Dict[str, Any]:
-    """V1-reference flood depth grid for a HISTORICAL event's documented
-    forcing bin (like the Mumbai 2017 replay depth maps, ported to V2).
+    """V1-reference flood depth grid for a HISTORICAL event's forcing bin
+    (like the Mumbai 2017 replay depth maps, ported to V2).
 
-    The V1 model (inlet capture -> surcharge -> D8 equilibrium ponding)
-    runs on the event's documented bin depths; the result is a
-    HISTORICAL MODEL REPLAY depth product - SIMULATED_MODEL_OUTPUT
-    provenance, never observed depth. Cached per event (deterministic)."""
+    By default the bins are the event's DOCUMENTED catalog forcing only.
+    With complete_24h=true the same V1 model runs on the 24-hour
+    NWP-completed event-day forcing: documented catalog hours keep
+    SIMULATED_MODEL_OUTPUT provenance, while Open-Meteo archive hours are
+    labeled NWP_COMPLETION_MODEL_OUTPUT (a reanalysis model value, never an
+    observation). Either way the depth product is never observed depth.
+    Cached per event+timestep (deterministic)."""
     _require_harness()
     if event_id not in replay_harness.REPLAY_EVENT_IDS:
         raise HTTPException(status_code=404, detail=f"unknown event {event_id}")
@@ -641,23 +782,108 @@ def get_event_depth_grid(
             status_code=409,
             detail=f"event {event_id} has no executable forcing; depth replay is NOT_COMPUTABLE",
         )
-    if timestep_index >= len(profile.bins):
-        raise HTTPException(status_code=400, detail=f"timestep_index must be in [0, {len(profile.bins) - 1}]")
 
-    cache_key = f"depthgrid:{event_id}"
+    if complete_24h:
+        block = _replay_completion_block(event_id, resolved, profile)
+        if block["status"] != "COMPUTED":
+            raise HTTPException(
+                status_code=409,
+                detail=f"NWP forcing completion not available for {event_id}: "
+                + "; ".join(block["diagnostics"] or [block["status"]]),
+            )
+        cbins = block["bins"]
+        bins_meta = [b["depth_mm"] for b in cbins]
+        intervals = [1.0] * len(cbins)
+        prov_list = [b["provenance"] for b in cbins]
+        src_list = [b["source"] for b in cbins]
+        step_labels = [f"{int(b['hour_of_day']):02d}:00 IST" for b in cbins]
+        cache_key = f"depthgrid24:{event_id}"
+        completion_meta = {
+            "status": block["status"],
+            "event_day_ist": block["event_day_ist"],
+            "documented_start_hour_ist": block["documented_start_hour_ist"],
+            "reference": block["reference"],
+            "claim_policy": block["claim_policy"],
+        }
+    else:
+        bins_meta = []
+        intervals = []
+        prov_list = []
+        src_list = []
+        step_labels = []
+        cum_h = 0.0
+        for b in profile.bins:
+            h = replay_harness._bin_interval_hours(b)
+            intervals.append(h)
+            bins_meta.append(replay_harness._bin_depth_mm(b, h))
+            prov_list.append(b.provenance.value)
+            src_list.append("DOCUMENTED_CATALOG")
+            step_labels.append(f"H+{cum_h:.0f}h")
+            cum_h += h
+        cache_key = f"depthgrid:{event_id}:{timestep_index}"
+        completion_meta = None
+
+    if timestep_index >= len(bins_meta):
+        raise HTTPException(
+            status_code=400, detail=f"timestep_index must be in [0, {len(bins_meta) - 1}]"
+        )
+
+    def _assemble_depth_payload(
+        step_list: List[Dict[str, Any]], idx: int
+    ) -> Dict[str, Any]:
+        payload: Dict[str, Any] = {
+            "event_id": event_id,
+            "canonical_event_id": resolved,
+            "timestep_index": idx,
+            "mode": "HISTORICAL MODEL REPLAY (V1 reference)",
+            "claim_policy": (
+                "HISTORICAL MODEL REPLAY: the V1 reference depth model on the "
+                "documented historical forcing. SIMULATED_MODEL_OUTPUT - never "
+                "observed depth, never real-event accuracy. UNKNOWN forcing "
+                "hours never add rainfall (never invented, never zero-filled); "
+                "the depth layer continues hourly as labelled MODELLED "
+                "recession of the last documented state. Each timestep carries "
+                "the previous timestep's standing water forward minus the "
+                f"ASSUMED infiltration ({INFILTRATION_MM_H} mm/h), so the "
+                "replay drains over time instead of resetting every hour."
+            ),
+            "step": step_list[idx],
+            "steps_summary": [
+                {k: v for k, v in st.items() if k not in ("depth_cells", "streets")}
+                for st in step_list
+            ],
+            "generated_at": _iso(datetime.now(timezone.utc)),
+            "source_type": "SIMULATED_MODEL_OUTPUT",
+        }
+        if complete_24h:
+            payload["mode"] = (
+                "HISTORICAL MODEL REPLAY (V1 reference; 24-h NWP-completed event day)"
+            )
+            payload["claim_policy"] = (
+                "HISTORICAL MODEL REPLAY: the V1 reference depth model on the "
+                "event-day forcing. Documented catalog hours keep "
+                "SIMULATED_MODEL_OUTPUT; NWP_COMPLETION_MODEL_OUTPUT hours are the "
+                "same model run on Open-Meteo historical REANALYSIS rainfall - "
+                "model values, never observations, never real-event accuracy. "
+                "Hours neither source supplies never add rainfall (never invented, "
+                "never zero-filled); the layer only continues as labelled MODELLED "
+                "recession."
+            )
+            payload["forcing_completion"] = completion_meta
+            payload["source_type"] = step_list[idx].get(
+                "source_type", "SIMULATED_MODEL_OUTPUT"
+            )
+        return payload
+
     cached = _REPLAY_CACHE.get(cache_key)
-    if cached is not None and cached["timestep_index"] == timestep_index:
+    if cached is not None:
+        if complete_24h:
+            return _assemble_depth_payload(cached["steps"], timestep_index)
         return cached
 
-    # Pseudo-scenario: one timestep per documented bin (interval preserved).
+    # Pseudo-scenario: one timestep per forcing bin (interval preserved).
     from datetime import timedelta as _td
 
-    bins_meta = []
-    intervals = []
-    for b in profile.bins:
-        h = replay_harness._bin_interval_hours(b)
-        intervals.append(h)
-        bins_meta.append(replay_harness._bin_depth_mm(b, h))
     pseudo = ScenarioDefinition(
         scenario_id=f"HIST-{event_id}",
         name=f"historical replay {event_id}",
@@ -672,34 +898,90 @@ def get_event_depth_grid(
     capacity_by_edge = {e.edge_id: e.capacity_min_m3_s for e in graph.edges}
 
     from backend.app.domain.delhi.scenarios import depth_v1 as dv
+    from backend.app.domain.delhi.scenarios.depth_v1 import (
+        inlet_cell_indices, _curb_inlet_capacity_m3, _v1_route,
+    )
+    from backend.app.domain.delhi.live_state import _street_intelligence
+    import numpy as _np
+
+    cell_area = structure.cell_area_m2
+    n_cells = structure.cell_flat_idx.size
+    cap_m = _np.where(structure.depression_cap_m > 0.15, structure.depression_cap_m, 0.10)
+    inlets = inlet_cell_indices()
+    flat_to_win = {int(f): i for i, f in enumerate(structure.cell_flat_idx)}
+    inlet_win = _np.array(
+        [flat_to_win[int(f)] for f in inlets if int(f) in flat_to_win], dtype=_np.int64
+    )
+
+    class _Step:
+        pass
 
     steps: List[Dict[str, Any]] = []
+    # Per-timestep depth grids + step proxies, kept for the street/intersection
+    # intelligence pass below (V1 replay draws flooded roads on every timestep).
+    step_objs: List[Optional[Any]] = []
+    step_grids: List[_np.ndarray] = []
+    # V1-parity playback: the depth layer advances on EVERY timestep. An
+    # UNKNOWN forcing hour adds NO new rainfall (never invented, never
+    # zero-filled); the layer recedes from the last documented modelled
+    # standing-water state via the documented ASSUMED infiltration loss.
+    standing_prev = _np.zeros(n_cells)
     for t, depth_mm in enumerate(bins_meta):
         if depth_mm is None:
+            if float(standing_prev.sum()) <= 0.0:
+                steps.append({
+                    "timestep_index": t,
+                    "status": "UNKNOWN_FORCING_SKIPPED",
+                    "max_depth_cm": None,
+                    "flooded_cells": 0,
+                    "flood_state": "UNKNOWN",
+                    "depth_cells": [],
+                    "source_type": "SIMULATED_MODEL_OUTPUT",
+                })
+                step_objs.append(None)
+                step_grids.append(_np.zeros(n_cells))
+                continue
+            loss_m3 = INFILTRATION_MM_H / 1000.0 * intervals[t] * cell_area
+            receded = _np.maximum(standing_prev - loss_m3, 0.0)
+            st = _Step()
+            st.timestep_index = t
+            st.depth_m = receded / cell_area
+            flooded = int(_np.count_nonzero(st.depth_m > 0.001))
+            max_depth_m = float(st.depth_m.max()) if st.depth_m.size else 0.0
+            cells = depth_cells_from_v1(st, structure)
             steps.append({
                 "timestep_index": t,
-                "status": "UNKNOWN_FORCING_SKIPPED",
-                "max_depth_cm": None,
-                "flooded_cells": 0,
-                "flood_state": "UNKNOWN",
-                "depth_cells": [],
+                "status": "RECESSION_CONTINUATION",
+                "forcing": "UNKNOWN (no new rainfall invented or zero-filled)",
+                "max_depth_cm": round(max_depth_m * 100.0, 1),
+                "flooded_cells": flooded,
+                "flood_state": (
+                    "NO_FLOOD" if max_depth_m * 100.0 < 2.0
+                    else cells[0]["flood_state"] if flooded else "NO_FLOOD"
+                ),
+                "depth_cells": cells,
+                "depth_polygons": depth_polygons_from_v1(st, structure),
+                "v1_mass_balance": {
+                    "carryover_in_m3": round(float(standing_prev.sum()), 1),
+                    "infiltration_loss_m3": round(
+                        float(standing_prev.sum()) - float(receded.sum()), 1
+                    ),
+                    "standing_out_m3": round(float(receded.sum()), 1),
+                },
+                "recession_note": (
+                    "MODELLED recession continuation of the last documented "
+                    f"forcing state (ASSUMED infiltration {INFILTRATION_MM_H} "
+                    "mm/h over the step interval); the forcing itself remains "
+                    "UNKNOWN for this hour"
+                ),
                 "source_type": "SIMULATED_MODEL_OUTPUT",
             })
+            step_objs.append(st)
+            step_grids.append(st.depth_m)
+            standing_prev = receded
             continue
         # One-off V1 coupling for this bin (areal depth over its interval).
-        cell_area = structure.cell_area_m2
-        n_cells = structure.cell_flat_idx.size
         total_runoff = depth_mm / 1000.0 * 0.75 * cell_area * n_cells
-        from backend.app.domain.delhi.scenarios.depth_v1 import (
-            inlet_cell_indices, _curb_inlet_capacity_m3, _v1_route,
-        )
-        import numpy as _np
-
-        inlets = inlet_cell_indices()
-        flat_to_win = {int(f): i for i, f in enumerate(structure.cell_flat_idx)}
-        inlet_win = _np.array(
-            [flat_to_win[int(f)] for f in inlets if int(f) in flat_to_win], dtype=_np.int64
-        )
         curb_cap = _curb_inlet_capacity_m3(intervals[t], 1.0)
         runoff_at_inlets = _np.full(len(inlet_win), total_runoff / max(len(inlet_win), 1))
         conveyed_total = float(_np.minimum(runoff_at_inlets, curb_cap).sum())
@@ -708,12 +990,19 @@ def get_event_depth_grid(
         if excess.any():
             surcharge[inlet_win] = excess
         water, drained_out = _v1_route(surcharge, structure)
-        cap_m = _np.where(structure.depression_cap_m > 0.15, structure.depression_cap_m, 0.10)
         overflow_m3 = float(_np.maximum(water - cap_m * cell_area, 0.0).sum())
         water = _np.minimum(water, cap_m * cell_area)
 
-        class _Step:
-            pass
+        # Continuous replay balance: the hour's own modelled state PLUS the
+        # previous hour's standing water, after the documented ASSUMED
+        # infiltration loss (same 4 mm/h the UNKNOWN-hour recession uses). A
+        # replay must be able to fall as well as rise; without the carryover
+        # every light-rain hour after the peak would read bone dry.
+        infil_m3 = INFILTRATION_MM_H / 1000.0 * intervals[t] * cell_area
+        carry = _np.maximum(standing_prev - infil_m3, 0.0)
+        carryover_in_m3 = float(standing_prev.sum())
+        infiltration_loss_m3 = carryover_in_m3 - float(carry.sum())
+        water = _np.minimum(water + carry, cap_m * cell_area)
 
         st = _Step()
         st.timestep_index = t
@@ -745,28 +1034,50 @@ def get_event_depth_grid(
                 "surcharged_m3": round(float(excess.sum()), 1),
                 "overflow_m3": round(overflow_m3, 1),
                 "drained_out_m3": round(drained_out, 1),
+                "carryover_in_m3": round(carryover_in_m3, 1),
+                "infiltration_loss_m3": round(infiltration_loss_m3, 1),
             },
             "source_type": "SIMULATED_MODEL_OUTPUT",
         })
+        step_objs.append(st)
+        step_grids.append(st.depth_m)
+        standing_prev = water
 
-    payload = {
-        "event_id": event_id,
-        "canonical_event_id": resolved,
-        "timestep_index": timestep_index,
-        "mode": "HISTORICAL MODEL REPLAY (V1 reference)",
-        "claim_policy": (
-            "HISTORICAL MODEL REPLAY: the V1 reference depth model on the "
-            "documented historical forcing. SIMULATED_MODEL_OUTPUT - never "
-            "observed depth, never real-event accuracy."
-        ),
-        "timestep_index": timestep_index,
-        "step": steps[timestep_index],
-        "steps_summary": [
-            {k: v for k, v in st.items() if k != "depth_cells"} for st in steps
-        ],
-        "generated_at": _iso(datetime.now(timezone.utc)),
-        "source_type": "SIMULATED_MODEL_OUTPUT",
-    }
+    # V1-parity replay roads: every timestep carries the street/intersection
+    # intelligence of its own depth grid, plus the change vs the previous
+    # timestep (RISING / FALLING / STEADY / EMERGING) — modelled state
+    # differences, never observed trends.
+    prev_grid = None
+    for t, st_dict in enumerate(steps):
+        label = step_labels[t] if t < len(step_labels) else f"step {t + 1}"
+        if step_objs[t] is None:
+            st_dict["streets"] = None
+        else:
+            st_dict["streets"] = _street_intelligence(
+                step_objs[t], structure, label, prev_depth_m=prev_grid
+            )
+        prev_grid = step_grids[t]
+
+    if complete_24h:
+        # Documented catalog hours keep their labels untouched; archive
+        # hours are promoted to the explicit NWP completion class.
+        for i, st in enumerate(steps):
+            st["rainfall_source"] = src_list[i]
+            if src_list[i] == "OPEN_METEO_ARCHIVE":
+                st["rainfall_provenance"] = "NWP_HISTORICAL_COMPLETION"
+                if st.get("status") == "COMPUTED":
+                    st["forcing"] = (
+                        "Open-Meteo historical reanalysis hourly precipitation "
+                        "(model value, not observed)"
+                    )
+                    st["source_type"] = "NWP_COMPLETION_MODEL_OUTPUT"
+            else:
+                st["rainfall_provenance"] = prov_list[i]
+
+    if complete_24h:
+        _REPLAY_CACHE[cache_key] = {"steps": steps}
+        return _assemble_depth_payload(steps, timestep_index)
+    payload = _assemble_depth_payload(steps, timestep_index)
     _REPLAY_CACHE[cache_key] = payload
     return payload
 

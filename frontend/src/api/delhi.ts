@@ -149,6 +149,26 @@ export interface ReplayForcingBin {
   provenance: string;
 }
 
+export interface CompletionForcingBin {
+  hour_of_day: number;
+  time_start: string;
+  depth_mm: number | null;
+  units: string;
+  provenance: string;
+  source: 'DOCUMENTED_CATALOG' | 'OPEN_METEO_ARCHIVE' | 'NO_SOURCE';
+}
+
+export interface ForcingCompletion {
+  status: 'COMPUTED' | 'UNAVAILABLE' | 'NOT_APPLICABLE';
+  event_day_ist: string;
+  documented_start_hour_ist: number;
+  documented_bin_count: number;
+  bins: CompletionForcingBin[];
+  diagnostics: string[];
+  acquired_at: string;
+  claim_policy: string;
+}
+
 export interface ChainStepReach {
   reach_id: string;
   hydraulic_status: string;
@@ -221,6 +241,7 @@ export interface EventReplayResponse {
   counters?: Record<string, number>;
   integrity_checks?: Record<string, string>;
   claim_policy: string;
+  forcing_completion?: ForcingCompletion | null;
 }
 
 // 28C replay artifact (reproducible record; separated from operational outputs)
@@ -441,19 +462,30 @@ export const delhiApi = {
   getEnsemble: (signal?: AbortSignal) => getJson<EnsembleResponse>('/api/delhi/ensemble', signal),
   getNetwork: (signal?: AbortSignal) => getJson<NetworkResponse>('/api/delhi/network', signal),
   getEvents: (signal?: AbortSignal) => getJson<EventsResponse>('/api/delhi/events', signal),
-  getEventReplay: (eventId: string, refresh = false, signal?: AbortSignal) =>
+  getEventReplay: (eventId: string, refresh = false, signal?: AbortSignal, complete24h = false) =>
     getJson<EventReplayResponse>(
-      `/api/delhi/events/${encodeURIComponent(eventId)}/replay${refresh ? '?refresh=true' : ''}`,
+      `/api/delhi/events/${encodeURIComponent(eventId)}/replay?${
+        new URLSearchParams({
+          ...(refresh ? { refresh: 'true' } : {}),
+          ...(complete24h ? { complete_24h: 'true' } : {}),
+        }).toString()
+      }`,
       signal,
     ),
-  getEventDepth: (eventId: string, timestepIndex: number, signal?: AbortSignal) =>
+  getEventDepth: (eventId: string, timestepIndex: number, complete24h = false, signal?: AbortSignal) =>
     getJson<{
       event_id: string;
       mode: string;
-      step: { max_depth_cm: number | null; flooded_cells: number; flood_state: string; depth_cells: { lon: number; lat: number; depth_cm: number; flood_state: string; provenance: string }[]; depth_polygons?: { type: string; features: unknown[] }; source_type: string };
+      step: { max_depth_cm: number | null; flooded_cells: number; flood_state: string; depth_cells: { lon: number; lat: number; depth_cm: number; flood_state: string; provenance: string }[]; depth_polygons?: { type: string; features: unknown[] }; streets?: StreetsIntel | null; source_type: string; status: string; rainfall_provenance?: string; rainfall_source?: string };
       claim_policy: string;
+      forcing_completion?: {
+        status: string;
+        event_day_ist: string;
+        documented_start_hour_ist: number;
+        reference: Record<string, string>;
+      };
     }>(
-      `/api/delhi/events/${encodeURIComponent(eventId)}/depth?timestep_index=${timestepIndex}`,
+      `/api/delhi/events/${encodeURIComponent(eventId)}/depth?timestep_index=${timestepIndex}${complete24h ? '&complete_24h=true' : ''}`,
       signal,
     ),
   getEventArtifact: (eventId: string, signal?: AbortSignal) =>
@@ -716,6 +748,8 @@ export interface V1MassBalance {
   drained_out_m3: number;
 }
 
+export type DepthTrend = 'RISING' | 'FALLING' | 'STEADY' | 'EMERGING';
+
 export interface AffectedRoadEntry {
   road_id: string;
   osm_id: number;
@@ -725,6 +759,9 @@ export interface AffectedRoadEntry {
   flooded_length_m: number;
   risk_level: 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW' | 'NONE' | 'UNKNOWN';
   provenance: string;
+  // Replay only: change vs the previous replay timestep (modelled, not observed).
+  depth_delta_m?: number;
+  depth_trend?: DepthTrend;
 }
 
 export interface AffectedIntersectionEntry {
@@ -735,6 +772,8 @@ export interface AffectedIntersectionEntry {
   risk_level: 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW' | 'NONE' | 'UNKNOWN';
   connection_count: number;
   provenance: string;
+  depth_delta_m?: number;
+  depth_trend?: DepthTrend;
 }
 
 export interface StreetsIntel {
@@ -745,6 +784,7 @@ export interface StreetsIntel {
     max_street_depth_m: number;
     total_flooded_road_length_m: number;
     risk_counts: { CRITICAL: number; HIGH: number; MEDIUM: number; LOW: number };
+    trend_counts?: { RISING: number; FALLING: number; STEADY: number; EMERGING: number };
   };
   affected_roads: AffectedRoadEntry[];
   affected_intersections: AffectedIntersectionEntry[];

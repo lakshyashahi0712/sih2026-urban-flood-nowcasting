@@ -416,6 +416,24 @@ const DelhiMap = ({
       .addTo(map);
   };
 
+  const trendRow = (p: any): string => {
+    if (!p.depth_trend) return '';
+    const delta = Number(p.depth_delta_m ?? 0);
+    const color =
+      p.depth_trend === 'RISING' || p.depth_trend === 'EMERGING'
+        ? '#b91c1c'
+        : p.depth_trend === 'FALLING'
+          ? '#1d4ed8'
+          : '#475569';
+    const icon =
+      p.depth_trend === 'FALLING' ? '▼' : p.depth_trend === 'STEADY' ? '＝' : p.depth_trend === 'EMERGING' ? '↑' : '▲';
+    const label =
+      p.depth_trend === 'EMERGING' ? 'newly flooded' : String(p.depth_trend).toLowerCase();
+    return `<div class="popup-row"><span class="lbl">Vs previous step:</span><span class="val bold" style="color:${color}">${icon} ${
+      delta > 0 ? '+' : ''
+    }${(delta * 100).toFixed(1)} cm (${label})</span></div>`;
+  };
+
   const attachLayerPopupListeners = (map: MapLibreMap) => {
     map.on('click', 'street-risk-roads', (e) =>
       showPopup(map, e, (p) => `
@@ -427,6 +445,7 @@ const DelhiMap = ({
           <div class="popup-body">
             <div class="popup-row"><span class="lbl">Street:</span><span class="val bold">${p.name || 'Unnamed'}</span></div>
             <div class="popup-row"><span class="lbl">Predicted depth:</span><span class="val bold" style="color:#c2410c">${Number(p.max_depth_m).toFixed(2)} m (${Math.round(Number(p.max_depth_m) * 100)} cm)</span></div>
+            ${trendRow(p)}
             <div class="popup-row"><span class="lbl">Flooded corridor:</span><span class="val">${p.flooded_length_m} m</span></div>
             <div class="popup-row"><span class="lbl">Road geometry:</span><span class="val">OpenStreetMap (ODbL)</span></div>
             <div class="popup-row"><span class="lbl">Depth source:</span><span class="val status-modelled">Modelled (V1 depth grid, 30 m DSM)</span></div>
@@ -444,6 +463,7 @@ const DelhiMap = ({
             <div class="popup-row"><span class="lbl">Junction:</span><span class="val bold">${p.name || 'Junction'}</span></div>
             <div class="popup-row"><span class="lbl">Cross streets:</span><span class="val">${p.roads_display || p.name || ''}</span></div>
             <div class="popup-row"><span class="lbl">Predicted depth:</span><span class="val bold" style="color:#c2410c">${Number(p.max_depth_m).toFixed(2)} m (${Math.round(Number(p.max_depth_m) * 100)} cm)</span></div>
+            ${trendRow(p)}
             <div class="popup-row"><span class="lbl">Topology:</span><span class="val">OpenStreetMap (ODbL)</span></div>
             <div class="popup-row"><span class="lbl">Depth source:</span><span class="val status-modelled">Modelled (V1 depth grid, 30 m DSM)</span></div>
           </div>
