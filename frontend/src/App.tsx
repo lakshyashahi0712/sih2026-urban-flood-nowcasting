@@ -1,12 +1,17 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import FloodMap from './components/FloodMap';
 import DelhiApp from './components/delhi/DelhiApp';
+import { wakeBackend } from './api/config';
 import { getInitialMapTheme, type MapTheme } from './config/mapStyles';
 import './App.css';
 
 type CityMode = 'DELHI_V2' | 'MUMBAI_V1';
 
 function App() {
+  useEffect(() => {
+    wakeBackend();
+  }, []);
+
   const [mode, setMode] = useState<CityMode>(() => {
     if (typeof window !== 'undefined' && window.location.search.toLowerCase().includes('delhi')) {
       return 'DELHI_V2';

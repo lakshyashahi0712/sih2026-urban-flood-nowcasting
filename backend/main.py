@@ -9,6 +9,9 @@ Run with:  uvicorn main:app --reload --host 0.0.0.0 --port 8000
 """
 import os
 import sys
+import logging
+import threading
+import time
 from datetime import datetime
 from pathlib import Path
 
@@ -52,9 +55,54 @@ except ImportError:
     from app.observability.memory_instrumentation import RequestMemoryLogMiddleware
 
 
+import logging
+import threading
+import time
+
+# Opt-out for tests and for operators who want a strictly lazy first request.
+_WARM_FLOOD_CACHE_ON_BOOT = (
+    os.environ.get("FLOOD_WARM_ON_BOOT", "1") != "0"
+    and "PYTEST_CURRENT_TEST" not in os.environ
+)
+
+
+def _warm_mumbai_flood_caches() -> None:
+    """Compute V1's two boot states once at startup so the first visitor is a cache hit."""
+    import asyncio
+
+    try:
+        from backend.routers import flood as flood_router
+    except ImportError:
+        from routers import flood as flood_router
+
+    async def _run():
+        await flood_router.compute_flood_forecast_evolution(use_cache=True)
+        await flood_router.get_streets_forecast(use_cache=True)
+
+    try:
+        started_at = time.monotonic()
+        asyncio.run(_run())
+        logging.getLogger("uvicorn.error").info(
+            "Mumbai flood caches warmed in %.1fs", time.monotonic() - started_at
+        )
+    except Exception:
+        logging.getLogger("uvicorn.error").warning(
+            "Mumbai flood cache warm-up failed", exc_info=True
+        )
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     init_db()
+    if _WARM_FLOOD_CACHE_ON_BOOT:
+        # A daemon thread, not a coroutine: the model run is synchronous CPU
+        # work, and blocking the event loop would stall /health and get the
+        # instance marked unresponsive while it warms.
+        threading.Thread(
+            target=_warm_mumbai_flood_caches,
+            name="flood-cache-warm",
+            daemon=True,
+        ).start()
     yield
 
 
