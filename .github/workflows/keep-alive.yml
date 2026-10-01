@@ -1,0 +1,40 @@
+name: keep-alive
+
+# Render's free tier tears the container down after ~15 minutes without inbound
+# traffic, and the next visitor then waits out a cold boot (measured: 33-54s to
+# first byte, versus 0.44s when the instance is already awake). Two staggered
+# 10-minute schedules give a ping every 5 minutes, which keeps the idle timer
+# from expiring even when Actions delays one of them.
+
+on:
+  schedule:
+    - cron: '*/10 * * * *'
+    - cron: '5-59/10 * * * *'
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: keep-alive
+  cancel-in-progress: false
+
+jobs:
+  ping:
+    # Stop fork copies from burning their minutes on our service.
+    if: github.repository == 'lakshyashahi0712/sih2026-urban-flood-nowcasting'
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    # A failed ping only costs us one sleep cycle; it must not email the team.
+    continue-on-error: true
+    steps:
+      - name: Wake the API
+        env:
+          URL: https://sih2026-flood-api.onrender.com/ready
+        run: |
+          for attempt in 1 2 3; do
+            result=$(curl -sS -o /dev/null --max-time 75 -w '%{http_code} %{time_total}' "$URL" || echo '000 0')
+            echo "attempt $attempt: $result"
+            [ "${result%% *}" = "200" ] && exit 0
+            sleep 5
+          done
+          echo "::warning::/ready never returned 200"
