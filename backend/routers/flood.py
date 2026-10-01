@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import tempfile
 import os
+import time
 from pathlib import Path
 from datetime import datetime, timezone, timedelta
 from typing import Any, Dict, List, Optional
@@ -114,6 +115,11 @@ def _create_synthetic_dem_mumbai_bbox(
     return dem, meta
 
 
+def _dem_is_real() -> bool:
+    dem_file = getattr(settings, "dem_path", None)
+    return bool(dem_file and os.path.exists(dem_file))
+
+
 def _get_dem_path_and_meta() -> tuple[str, dict, bool]:
     """
     Get the DEM raster path and metadata for flood modeling.
@@ -136,6 +142,108 @@ def _get_dem_path_and_meta() -> tuple[str, dict, bool]:
     with rio_open(tmp_path, 'w', **meta) as dst:
         dst.write(dem_array, 1)
     return tmp_path, meta, True
+
+
+# ---------------------------------------------------------------------------
+# Modelled-state memo
+# ---------------------------------------------------------------------------
+# The pipeline and the OSM street association are pure functions of
+# (rainfall depth, catchment parameters, horizon label): the same inputs always
+# produce byte-identical states. Caching at that level means a boot burst costs
+# one model run per *distinct* rainfall value instead of one per request, which
+# is what kept pushing the free-tier instance past its memory ceiling.
+#
+# Response metadata (rainfall timestamps, acquired_at, status, provenance) is
+# deliberately NOT cached — every response is assembled fresh from the rainfall
+# series that was actually read, so a cached number can never be presented as
+# newer data than it is.
+#
+# No lock is taken: these routes are coroutines and the model run is
+# synchronous, so two requests can never interleave inside a build. The worst
+# case is two identical computations returning identical values.
+_MODELLED_STATE_TTL_S = 900.0
+_MODELLED_STATE_MAX_ENTRIES = 24
+_modelled_state_cache: Dict[tuple, tuple[float, Any]] = {}
+
+
+def _modelled_state_get(key: tuple) -> Optional[Any]:
+    entry = _modelled_state_cache.get(key)
+    if entry is None:
+        return None
+    stored_at, value = entry
+    if time.monotonic() - stored_at > _MODELLED_STATE_TTL_S:
+        _modelled_state_cache.pop(key, None)
+        return None
+    return value
+
+
+def _modelled_state_put(key: tuple, value: Any) -> None:
+    if len(_modelled_state_cache) >= _MODELLED_STATE_MAX_ENTRIES:
+        oldest_key = min(_modelled_state_cache.items(), key=lambda kv: kv[1][0])[0]
+        _modelled_state_cache.pop(oldest_key, None)
+    _modelled_state_cache[key] = (time.monotonic(), value)
+
+
+def clear_modelled_state_cache() -> None:
+    """Drop every memoised modelled state."""
+    _modelled_state_cache.clear()
+
+
+def _modelled_state_key(kind: str, rainfall_mm: float, *rest: Any) -> tuple:
+    return (kind, round(float(rainfall_mm), 6)) + rest
+
+
+def _modelled_horizon_state(
+    rainfall_mm: float,
+    contributing_area_m2: float,
+    runoff_coefficient: float,
+    threshold_area_m2: float,
+) -> Dict[str, Any]:
+    """Run one independent 1-hour model pass, reusing a memoised result if fresh."""
+    key = _modelled_state_key(
+        "horizon", rainfall_mm, contributing_area_m2, runoff_coefficient, threshold_area_m2
+    )
+    cached = _modelled_state_get(key)
+    if cached is not None:
+        return cached
+
+    dem_path, meta, is_temp = _get_dem_path_and_meta()
+    try:
+        result = run_flood_modeling_pipeline(
+            rainfall_mm=rainfall_mm,
+            contributing_area_m2=contributing_area_m2,
+            runoff_coefficient=runoff_coefficient,
+            dem_raster_path=dem_path,
+            timestep_hours=1.0,  # Strictly 1.0 hour
+            threshold_area_m2=threshold_area_m2
+        )
+
+        geojson_result = _flood_result_to_geojson(
+            flood_result=result,
+            cell_size=meta['transform'][0],
+            origin_x=meta['transform'][2],
+            origin_y=meta['transform'][5]
+        )
+
+        area_m2 = float(result.total_flooded_area_m2)
+        vol_m3 = float(result.total_flood_volume_m3)
+        state = {
+            "max_depth_m": float(result.max_depth_m),
+            "flooded_area_m2": area_m2,
+            "total_flooded_area_m2": area_m2,
+            "flood_volume_m3": vol_m3,
+            "total_flood_volume_m3": vol_m3,
+            "total_runoff_volume_m3": float(result.total_runoff_volume_m3),
+            "conveyed_drainage_volume_m3": float(result.conveyed_drainage_volume_m3),
+            "surface_flood_volume_m3": float(result.surface_flood_volume_m3),
+            "features": geojson_result.get("features", []),
+            "geojson": geojson_result,
+        }
+        _modelled_state_put(key, state)
+        return state
+    finally:
+        if is_temp and os.path.exists(dem_path):
+            os.unlink(dem_path)
 
 
 def _flood_result_to_geojson(
@@ -370,87 +478,57 @@ async def compute_flood_forecast_evolution(
                 "lead_time": lead_times[i]
             })
 
-    # Load DEM raster path and metadata (real Copernicus DEM GLO-30 or fallback)
-    dem_path, meta, is_temp = _get_dem_path_and_meta()
+    horizon_states: List[HorizonState] = []
+    for i in range(4):
+        meta_item = records_meta[i]
+        rain_mm = meta_item["rainfall_mm"]
 
-    try:
-        horizon_states: List[HorizonState] = []
-        for i in range(4):
-            meta_item = records_meta[i]
-            rain_mm = meta_item["rainfall_mm"]
-
-            # Independent simulation strictly using 1-hour timestep
-            result = run_flood_modeling_pipeline(
-                rainfall_mm=rain_mm,
-                contributing_area_m2=contributing_area_m2,
-                runoff_coefficient=runoff_coefficient,
-                dem_raster_path=dem_path,
-                timestep_hours=1.0,  # Strictly 1.0 hour
-                threshold_area_m2=threshold_area_m2
-            )
-
-            geojson_result = _flood_result_to_geojson(
-                flood_result=result,
-                cell_size=meta['transform'][0],
-                origin_x=meta['transform'][2],
-                origin_y=meta['transform'][5]
-            )
-
-            max_d = float(result.max_depth_m)
-            area_m2 = float(result.total_flooded_area_m2)
-            vol_m3 = float(result.total_flood_volume_m3)
-            features = geojson_result.get("features", [])
-
-            state = HorizonState(
-                horizon=labels[i],
-                lead_time=meta_item["lead_time"],
-                timestamp=meta_item["timestamp"],
-                interval_end=meta_item["interval_end"],
-                rainfall_mm=rain_mm,
-                timestep_hours=1.0,
-                max_depth_m=max_d,
-                flooded_area_m2=area_m2,
-                total_flooded_area_m2=area_m2,
-                flood_volume_m3=vol_m3,
-                total_flood_volume_m3=vol_m3,
-                total_runoff_volume_m3=float(result.total_runoff_volume_m3),
-                conveyed_drainage_volume_m3=float(result.conveyed_drainage_volume_m3),
-                surface_flood_volume_m3=float(result.surface_flood_volume_m3),
-                features=features,
-                geojson=geojson_result,
-            )
-            horizon_states.append(state)
-
-        elevation_label = "Copernicus GLO-30 DSM (30m)" if not is_temp else "Synthetic DEM (sloping plane prototype)"
-        if client_assisted:
-            rainfall_prov = "Open-Meteo hourly NWP (client-assisted ingest)"
-        elif status_str == "LIVE":
-            rainfall_prov = "Weather forecast (Open-Meteo hourly NWP)"
-        elif rainfall_mm_list is None and series.records and hasattr(series.records[0].provenance, "value"):
-            rainfall_prov = series.records[0].provenance.value
-        elif rainfall_mm_list is None and series.records:
-            rainfall_prov = str(series.records[0].provenance)
-        else:
-            rainfall_prov = "FALLBACK_CACHED_FORECAST"
-
-        return FloodForecastResponse(
-            source=source,
-            source_type="forecast",
-            acquired_at=acquired_at_str,
-            status=status_str,
-            provenance={
-                "rainfall": rainfall_prov,
-                "elevation": elevation_label,
-                "runoff": "rainfall\u2013runoff",
-                "drainage": "drainage capacity",
-                "surface_routing": "surface routing",
-                "model_status": "MODELLED / DERIVED"
-            },
-            horizons=horizon_states
+        # Independent simulation strictly using 1-hour timestep
+        state_values = _modelled_horizon_state(
+            rainfall_mm=rain_mm,
+            contributing_area_m2=contributing_area_m2,
+            runoff_coefficient=runoff_coefficient,
+            threshold_area_m2=threshold_area_m2
         )
-    finally:
-        if is_temp and os.path.exists(dem_path):
-            os.unlink(dem_path)
+
+        state = HorizonState(
+            horizon=labels[i],
+            lead_time=meta_item["lead_time"],
+            timestamp=meta_item["timestamp"],
+            interval_end=meta_item["interval_end"],
+            rainfall_mm=rain_mm,
+            timestep_hours=1.0,
+            **state_values
+        )
+        horizon_states.append(state)
+
+    elevation_label = "Copernicus GLO-30 DSM (30m)" if _dem_is_real() else "Synthetic DEM (sloping plane prototype)"
+    if client_assisted:
+        rainfall_prov = "Open-Meteo hourly NWP (client-assisted ingest)"
+    elif status_str == "LIVE":
+        rainfall_prov = "Weather forecast (Open-Meteo hourly NWP)"
+    elif rainfall_mm_list is None and series.records and hasattr(series.records[0].provenance, "value"):
+        rainfall_prov = series.records[0].provenance.value
+    elif rainfall_mm_list is None and series.records:
+        rainfall_prov = str(series.records[0].provenance)
+    else:
+        rainfall_prov = "FALLBACK_CACHED_FORECAST"
+
+    return FloodForecastResponse(
+        source=source,
+        source_type="forecast",
+        acquired_at=acquired_at_str,
+        status=status_str,
+        provenance={
+            "rainfall": rainfall_prov,
+            "elevation": elevation_label,
+            "runoff": "rainfall\u2013runoff",
+            "drainage": "drainage capacity",
+            "surface_routing": "surface routing",
+            "model_status": "MODELLED / DERIVED"
+        },
+        horizons=horizon_states
+    )
 
 
 @router.get("/forecast", response_model=FloodForecastResponse)
@@ -540,6 +618,14 @@ def _compute_street_intelligence_for_depth(
     threshold_area_m2: float = 15000.0,
 ) -> StreetFloodIntelligence:
     """Run flood model pipeline and spatially associate with OSM streets/intersections."""
+    key = _modelled_state_key(
+        "street", rainfall_mm, horizon, lead_time,
+        contributing_area_m2, runoff_coefficient, threshold_area_m2,
+    )
+    cached = _modelled_state_get(key)
+    if cached is not None:
+        return cached
+
     dem_path, meta, is_temp = _get_dem_path_and_meta()
     try:
         pipeline_res = run_flood_modeling_pipeline(
@@ -551,7 +637,7 @@ def _compute_street_intelligence_for_depth(
             threshold_area_m2=threshold_area_m2,
         )
 
-        return match_flood_to_streets(
+        intel = match_flood_to_streets(
             flood_depth_m=pipeline_res.flood_depth_m,
             flooded_mask=pipeline_res.flooded_mask,
             cell_w=meta['transform'][0],
@@ -562,6 +648,8 @@ def _compute_street_intelligence_for_depth(
             lead_time=lead_time,
             rainfall_mm=rainfall_mm,
         )
+        _modelled_state_put(key, intel)
+        return intel
     finally:
         if is_temp and os.path.exists(dem_path):
             os.unlink(dem_path)

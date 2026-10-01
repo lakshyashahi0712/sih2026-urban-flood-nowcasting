@@ -583,20 +583,15 @@ const FloodMap = ({ theme }: FloodMapProps = {}) => {
   const fetchStreetScenarioData = useCallback(async (): Promise<Record<ScenarioValue, StreetFloodIntelligenceAPI> | null> => {
     if (streetScenarioDataRef.current) return streetScenarioDataRef.current;
     try {
-      const results = await Promise.all(
-        SCENARIO_VALUES.map(async (sc) => {
-          const hz = encodeURIComponent(SCENARIO_TO_HORIZON[sc] || '+1h');
-          const res = await fetch(apiUrl(`/flood/streets?rainfall_mm=${sc}&horizon=${hz}`));
-          if (!res.ok) return null;
-          const data: StreetFloodIntelligenceAPI = await res.json();
-          return { sc, data };
-        })
-      );
+      // One at a time: a 4-way burst of model runs is what pushed the free-tier
+      // instance past its memory ceiling during boot.
       const scMap: Record<ScenarioValue, StreetFloodIntelligenceAPI> = {} as any;
-      for (const item of results) {
-        if (item && item.data) {
-          scMap[item.sc] = item.data;
-        }
+      for (const sc of SCENARIO_VALUES) {
+        const hz = encodeURIComponent(SCENARIO_TO_HORIZON[sc] || '+1h');
+        const res = await fetch(apiUrl(`/flood/streets?rainfall_mm=${sc}&horizon=${hz}`));
+        if (!res.ok) continue;
+        const data: StreetFloodIntelligenceAPI = await res.json();
+        scMap[sc] = data;
       }
       setStreetScenarioData(scMap);
       streetScenarioDataRef.current = scMap;
@@ -747,6 +742,23 @@ const FloodMap = ({ theme }: FloodMapProps = {}) => {
       setLoading(false);
     }
   }, [applyHorizonToMap]);
+
+  // Scenario and replay data are only needed when those modes open, but fetching
+  // them while the tab is idle keeps a first switch from stalling on a cold
+  // instance. Strictly sequential: one heavy request in flight at a time.
+  const prewarmDeferredData = useCallback(() => {
+    const run = async () => {
+      await fetchScenarioEvolution();
+      await fetchStreetScenarioData();
+      await fetchHistoricalReplay();
+    };
+    const requestIdle = (window as any).requestIdleCallback;
+    if (typeof requestIdle === 'function') {
+      requestIdle(() => { void run(); }, { timeout: 15000 });
+    } else {
+      setTimeout(() => { void run(); }, 5000);
+    }
+  }, [fetchScenarioEvolution, fetchStreetScenarioData, fetchHistoricalReplay]);
 
   const setupMumbaiLayers = (map: MapLibreMap) => {
     // Add flood source
@@ -1447,17 +1459,15 @@ const FloodMap = ({ theme }: FloodMapProps = {}) => {
         }
       });
 
-      // Trigger initial data load
+      // Trigger initial data load: only what the LIVE view paints. Scenario and
+      // historical data are fetched on first use, then prewarmed when idle.
       fetchForecastEvolution('+1h').then(async () => {
         const fc = await fetchStreetForecastData();
         if (fc) {
           applyStreetDataToMap(fc['+1h'] || null);
         }
+        prewarmDeferredData();
       });
-      // Pre-warm scenario data so scenario switches are instant
-      fetchScenarioEvolution();
-      fetchStreetScenarioData();
-      fetchHistoricalReplay();
     });
 
     return () => {
@@ -1467,7 +1477,7 @@ const FloodMap = ({ theme }: FloodMapProps = {}) => {
       newMap.remove();
       mapInstanceRef.current = null;
     };
-  }, [fetchForecastEvolution, fetchScenarioEvolution, fetchStreetForecastData, fetchStreetScenarioData, fetchHistoricalReplay, applyStreetDataToMap]);
+  }, [fetchForecastEvolution, fetchStreetForecastData, applyStreetDataToMap, prewarmDeferredData]);
 
   const reapplyMumbaiDataRef = useRef(reapplyMumbaiData);
   reapplyMumbaiDataRef.current = reapplyMumbaiData;
