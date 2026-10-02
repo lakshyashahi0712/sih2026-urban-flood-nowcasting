@@ -32,6 +32,7 @@ from __future__ import annotations
 
 import json
 import math
+import threading
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from typing import Dict, List, Optional, Sequence, Tuple
@@ -863,6 +864,7 @@ def what_if_edge_depths(rainfall_mm_h: float) -> Dict[str, Optional[float]]:
 # because each entry carries depth grids/geojson.
 _LIVE_STATES_CACHE: Dict[str, dict] = {}
 _LIVE_STATES_CACHE_MAX = 4
+_LIVE_STATES_BUILD_LOCK = threading.Lock()
 _WHAT_IF_CACHE: Dict[str, dict] = {}
 _WHAT_IF_EDGE_DEPTHS_CACHE: Dict[str, Dict[str, Optional[float]]] = {}
 
@@ -904,6 +906,33 @@ def _with_freshness(states: dict, fetch: DelhiForecastFetch) -> dict:
     return fresh
 
 
+def _live_states_lookup(fetch: DelhiForecastFetch, include_geo: bool) -> Optional[dict]:
+    """Cached entry for these inputs, or None.
+
+    A geo-less poll is derived from a warm geo entry rather than rebuilt,
+    because the heavy arrays are the only difference between the two.
+    """
+    key = _live_states_cache_key(fetch, include_geo)
+    cached = _LIVE_STATES_CACHE.get(key)
+    if cached is not None:
+        return cached
+    if include_geo:
+        return None
+    warm = _LIVE_STATES_CACHE.get(_live_states_cache_key(fetch, True))
+    if warm is None:
+        return None
+    stripped = json.loads(json.dumps(warm))  # deep copy
+    for h in stripped.get("horizons", []):
+        h["depth_cells"] = []
+        h["depth_polygons"] = {"type": "FeatureCollection", "features": []}
+        if h.get("streets"):
+            h["streets"]["roads_geojson"] = {
+                "type": "FeatureCollection", "features": []}
+            h["streets"]["intersections_geojson"] = {
+                "type": "FeatureCollection", "features": []}
+    return stripped
+
+
 def get_cached_live_states(
     use_cache: bool = True,
     include_geo: bool = True,
@@ -921,30 +950,24 @@ def get_cached_live_states(
         fetch = fetch_forecast_with_fallback(use_cache=use_cache)
 
     if use_cache:
-        key = _live_states_cache_key(fetch, include_geo)
-        cached = _LIVE_STATES_CACHE.get(key)
-        if cached is None and not include_geo:
-            # Geo-less poll: derive from a warm geo entry instead of rebuilding.
-            warm = _LIVE_STATES_CACHE.get(_live_states_cache_key(fetch, True))
-            if warm is not None:
-                cached = json.loads(json.dumps(warm))  # deep copy
-                for h in cached.get("horizons", []):
-                    h["depth_cells"] = []
-                    h["depth_polygons"] = {
-                        "type": "FeatureCollection", "features": []}
-                    if h.get("streets"):
-                        h["streets"]["roads_geojson"] = {
-                            "type": "FeatureCollection", "features": []}
-                        h["streets"]["intersections_geojson"] = {
-                            "type": "FeatureCollection", "features": []}
+        cached = _live_states_lookup(fetch, include_geo)
         if cached is not None:
             return _with_freshness(cached, fetch)
 
-    states = build_live_states(fetch, include_geo=include_geo)
-    _LIVE_STATES_CACHE[_live_states_cache_key(fetch, include_geo)] = states
-    while len(_LIVE_STATES_CACHE) > _LIVE_STATES_CACHE_MAX:
-        _LIVE_STATES_CACHE.pop(next(iter(_LIVE_STATES_CACHE)))
-    return states
+    with _LIVE_STATES_BUILD_LOCK:
+        if use_cache:
+            # Look again: a concurrent request or the boot warm-up may have
+            # built this exact key while we queued on the lock. One build per
+            # key is what keeps a cold start inside the memory budget — two
+            # parallel builds was measured as a second full 18 s build.
+            cached = _live_states_lookup(fetch, include_geo)
+            if cached is not None:
+                return _with_freshness(cached, fetch)
+        states = build_live_states(fetch, include_geo=include_geo)
+        _LIVE_STATES_CACHE[_live_states_cache_key(fetch, include_geo)] = states
+        while len(_LIVE_STATES_CACHE) > _LIVE_STATES_CACHE_MAX:
+            _LIVE_STATES_CACHE.pop(next(iter(_LIVE_STATES_CACHE)))
+        return states
 
 
 def get_cached_what_if(rainfall_mm_h: float) -> dict:

@@ -10,7 +10,10 @@ provenance fields may never be.
 from __future__ import annotations
 
 import dataclasses
+import itertools
 import sys
+import threading
+import time
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
@@ -127,6 +130,58 @@ def test_client_assisted_variant_does_not_evict_the_server_variant(monkeypatch,
     assert client["rainfall_status"] == "COMPUTED"
     assert again["peak"] == server["peak"]
     assert len(ls._LIVE_STATES_CACHE) == 2
+
+
+def test_cold_stampede_builds_once(monkeypatch, fallback_forecast):
+    """A boot warm-up and a first visitor must not build the same window twice.
+
+    This is the concurrency half of the fix: the memo is a plain dict, so
+    without the build lock every thread that arrives at a cold cache runs a
+    full depth-model step. Two parallel 18 s builds was the measured failure.
+    """
+    builds = []
+    real_build = ls.build_live_states
+
+    def slow_build(fetch, include_geo=True):
+        # Long enough that every other caller is parked on the lock before the
+        # first build finishes; with no lock all four would run this body.
+        time.sleep(0.3)
+        builds.append(fetch.status)
+        return real_build(fetch, include_geo=include_geo)
+
+    monkeypatch.setattr(ls, "build_live_states", slow_build)
+
+    now = datetime.now(timezone.utc)
+    counter = itertools.count()
+    stamp_lock = threading.Lock()
+
+    def stub(use_cache=True):
+        fetch = ls.synthetic_fallback_forecast()
+        fetch.bins = fallback_forecast.bins
+        with stamp_lock:
+            i = next(counter)
+        # Same physics, a fresh acquisition stamp per call — production churn.
+        fetch.acquired_at = now + timedelta(seconds=90 * i)
+        return fetch
+
+    monkeypatch.setattr(ls, "fetch_forecast_with_fallback", stub)
+
+    results = {}
+
+    def run(idx):
+        results[idx] = ls.get_cached_live_states()
+
+    threads = [threading.Thread(target=run, args=(i,)) for i in range(4)]
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join(timeout=60)
+
+    assert len(builds) == 1, f"cold cache ran {len(builds)} builds"
+    assert len(results) == 4
+    assert {r["rainfall_acquired_at"] for r in results.values()} == {
+        (now + timedelta(seconds=90 * i)).isoformat() for i in range(4)
+    }, "a concurrent response was served another request's timestamp"
 
 
 def test_cache_is_bounded(monkeypatch):
