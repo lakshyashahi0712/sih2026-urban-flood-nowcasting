@@ -87,6 +87,12 @@ CACHE_TTL_MINUTES = 15.0
 FETCH_TIMEOUT_SECONDS = 10.0
 NOWCAST_HORIZON_HOURS = 4  # t+0..t+3 hourly bins
 
+# After an acquisition fails, stop attempting Open-Meteo for this long. Cloud
+# egress is per-IP rate limited, so retrying on every request only buys more
+# 429s and adds their latency to every response; the client-assisted ingest
+# path keeps carrying real data meanwhile.
+FAILURE_COOLDOWN_SECONDS = 60.0
+
 
 # ---------------------------------------------------------------------------
 # NWP forecast fetch (explicit operational states, no fabrication)
@@ -123,15 +129,20 @@ class DelhiForecastFetch:
 
 
 class _ForecastCache:
-    """In-process cache of the last successful fetch (freshness tracked)."""
+    """In-process cache of the last successful fetch (freshness tracked),
+    plus the cooldown clock for the last failed acquisition attempt."""
 
     def __init__(self) -> None:
         self._fetch: Optional[DelhiForecastFetch] = None
         self._acquired: Optional[datetime] = None
+        self._failed_at: Optional[datetime] = None
+        self._failure: Optional[str] = None
 
     def put(self, fetch: DelhiForecastFetch, acquired: datetime) -> None:
         self._fetch = fetch
         self._acquired = acquired
+        self._failed_at = None
+        self._failure = None
 
     def get_fresh(self, now: datetime, ttl_minutes: float) -> Optional[DelhiForecastFetch]:
         if self._fetch is None or self._acquired is None:
@@ -144,6 +155,23 @@ class _ForecastCache:
         if self._fetch is None or self._acquired is None:
             return None
         return self._fetch, self._acquired
+
+    def note_failure(self, when: datetime, reason: str) -> None:
+        self._failed_at = when
+        self._failure = reason
+
+    def cooldown(
+        self, now: datetime, seconds: float
+    ) -> Optional[Tuple[datetime, str, float]]:
+        """(failed_at, reason, remaining_seconds) while a failure is cooling off."""
+        if self._failed_at is None:
+            return None
+        remaining = seconds - (now - self._failed_at).total_seconds()
+        if remaining <= 0:
+            self._failed_at = None
+            self._failure = None
+            return None
+        return self._failed_at, self._failure or "", remaining
 
 
 _CACHE = _ForecastCache()
@@ -216,6 +244,33 @@ def _parse_open_meteo_payload(payload: dict, requested_utc_now: datetime) -> Tup
     return tuple(bins)
 
 
+def _degraded_fetch(diagnostics: List[str], use_cache: bool) -> DelhiForecastFetch:
+    """STALE (last good fetch) or UNAVAILABLE — explicit states, never fake data."""
+    stale = _CACHE.get_stale() if use_cache else None
+    if stale is not None:
+        fetch, acquired = stale
+        return DelhiForecastFetch(
+            status="STALE",
+            reference_point=fetch.reference_point,
+            latitude=fetch.latitude,
+            longitude=fetch.longitude,
+            acquired_at=acquired,
+            bins=fetch.bins,
+            diagnostics=diagnostics + [
+                f"serving cached forecast acquired {acquired.isoformat()}"
+            ],
+        )
+    return DelhiForecastFetch(
+        status="UNAVAILABLE",
+        reference_point=SAFDARJUNG_REFERENCE,
+        latitude=SAFDARJUNG_LAT,
+        longitude=SAFDARJUNG_LON,
+        acquired_at=None,
+        bins=(),
+        diagnostics=diagnostics,
+    )
+
+
 def fetch_delhi_rainfall_forecast(
     use_cache: bool = True,
     client: Optional[Any] = None,
@@ -233,6 +288,17 @@ def fetch_delhi_rainfall_forecast(
         fresh = _CACHE.get_fresh(requested_utc_now, CACHE_TTL_MINUTES)
         if fresh is not None:
             return fresh
+        cooling = _CACHE.cooldown(requested_utc_now, FAILURE_COOLDOWN_SECONDS)
+        if cooling is not None:
+            failed_at, reason, remaining = cooling
+            return _degraded_fetch(
+                [
+                    f"Open-Meteo acquisition attempt skipped: last attempt failed "
+                    f"{failed_at.isoformat()} ({reason}); retry allowed in "
+                    f"{remaining:.0f}s"
+                ],
+                use_cache,
+            )
 
     api_key = os.getenv("OPEN_METEO_API_KEY", "").strip()
     key_param = f"&apikey={api_key}" if api_key else ""
@@ -263,29 +329,9 @@ def fetch_delhi_rainfall_forecast(
         _CACHE.put(fetch, requested_utc_now)
         return fetch
     except Exception as exc:  # explicit degraded state, never fake data
-        diagnostics = [f"Open-Meteo forecast acquisition failed: {exc}"]
-        stale = _CACHE.get_stale() if use_cache else None
-        if stale is not None:
-            fetch, acquired = stale
-            return DelhiForecastFetch(
-                status="STALE",
-                reference_point=fetch.reference_point,
-                latitude=fetch.latitude,
-                longitude=fetch.longitude,
-                acquired_at=acquired,
-                bins=fetch.bins,
-                diagnostics=diagnostics + [
-                    f"serving cached forecast acquired {acquired.isoformat()}"
-                ],
-            )
-        return DelhiForecastFetch(
-            status="UNAVAILABLE",
-            reference_point=SAFDARJUNG_REFERENCE,
-            latitude=SAFDARJUNG_LAT,
-            longitude=SAFDARJUNG_LON,
-            acquired_at=None,
-            bins=(),
-            diagnostics=diagnostics,
+        _CACHE.note_failure(requested_utc_now, str(exc))
+        return _degraded_fetch(
+            [f"Open-Meteo forecast acquisition failed: {exc}"], use_cache
         )
 
 

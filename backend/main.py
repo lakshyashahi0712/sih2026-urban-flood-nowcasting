@@ -59,11 +59,21 @@ import logging
 import threading
 import time
 
-# Opt-out for tests and for operators who want a strictly lazy first request.
-_WARM_FLOOD_CACHE_ON_BOOT = (
-    os.environ.get("FLOOD_WARM_ON_BOOT", "1") != "0"
-    and "PYTEST_CURRENT_TEST" not in os.environ
-)
+
+def _warm_on_boot(env_var: str) -> bool:
+    """Should this surface's caches be computed at startup?
+
+    Evaluated when the app starts, NOT at import. pytest only sets
+    ``PYTEST_CURRENT_TEST`` per test phase, so an import-time check answered
+    "not testing" for the whole collection pass and any test that entered
+    ``with TestClient(app)`` launched a real warm thread — which then called
+    whatever pipeline that test had monkeypatched and appended phantom model
+    runs into it. Production uvicorn imports no pytest and sets no such
+    variable, so it still warms.
+    """
+    if "PYTEST_CURRENT_TEST" in os.environ or "pytest" in sys.modules:
+        return False
+    return os.environ.get(env_var, "1") != "0"
 
 
 def _warm_mumbai_flood_caches() -> None:
@@ -91,15 +101,49 @@ def _warm_mumbai_flood_caches() -> None:
         )
 
 
+def _warm_delhi_flood_caches() -> None:
+    """Compute V2's boot live-state once at startup so the first Delhi visitor is a cache hit."""
+    try:
+        from backend.app.domain.delhi import live_state as delhi_live_state
+    except ImportError:
+        from app.domain.delhi import live_state as delhi_live_state
+
+    try:
+        started_at = time.monotonic()
+        delhi_live_state.get_cached_live_states(use_cache=True)
+        logging.getLogger("uvicorn.error").info(
+            "Delhi flood caches warmed in %.1fs", time.monotonic() - started_at
+        )
+    except Exception:
+        logging.getLogger("uvicorn.error").warning(
+            "Delhi flood cache warm-up failed", exc_info=True
+        )
+
+
+def _warm_flood_caches_at_boot() -> None:
+    """Warm both city surfaces at startup, one at a time, V1 first.
+
+    V1 is the default launch surface, so it gets the CPU and the memory headroom
+    first; a parallel pair of builds is what turned a cold stampede into an OOM.
+    """
+    if _warm_on_boot("FLOOD_WARM_ON_BOOT"):
+        _warm_mumbai_flood_caches()
+    # V2's build is heavier than V1's, so it has its own switch for operators
+    # running a tighter memory budget.
+    if _warm_on_boot("DELHI_WARM_ON_BOOT"):
+        _warm_delhi_flood_caches()
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     init_db()
-    if _WARM_FLOOD_CACHE_ON_BOOT:
-        # A daemon thread, not a coroutine: the model run is synchronous CPU
-        # work, and blocking the event loop would stall /health and get the
-        # instance marked unresponsive while it warms.
+    if _warm_on_boot("FLOOD_WARM_ON_BOOT") or _warm_on_boot("DELHI_WARM_ON_BOOT"):
+        # One daemon thread, not a coroutine and not two threads: the model
+        # runs are synchronous CPU work, so blocking the event loop would stall
+        # /health and get the instance marked unresponsive, while two parallel
+        # builds is exactly the cold stampede that blew the memory budget.
         threading.Thread(
-            target=_warm_mumbai_flood_caches,
+            target=_warm_flood_caches_at_boot,
             name="flood-cache-warm",
             daemon=True,
         ).start()
