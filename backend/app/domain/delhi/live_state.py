@@ -855,13 +855,53 @@ def what_if_edge_depths(rainfall_mm_h: float) -> Dict[str, Optional[float]]:
 
 
 # ---------------------------------------------------------------------------
-# Cached builders (deterministic per forecast acquisition; Stage-7 perf)
+# Cached builders (deterministic per forecast window; Stage-7 perf)
 # ---------------------------------------------------------------------------
 
+# Entries hold MODELLED physics only, and every key carries the forecast
+# window, so the working set is the current hour plus a little slack. Bounded
+# because each entry carries depth grids/geojson.
 _LIVE_STATES_CACHE: Dict[str, dict] = {}
-_LIVE_STATES_CACHE_KEY: Optional[str] = None
+_LIVE_STATES_CACHE_MAX = 4
 _WHAT_IF_CACHE: Dict[str, dict] = {}
 _WHAT_IF_EDGE_DEPTHS_CACHE: Dict[str, Dict[str, Optional[float]]] = {}
+
+
+def _live_states_cache_key(fetch: DelhiForecastFetch, include_geo: bool) -> str:
+    """Key on the physics inputs — status, forecast window, hourly depths.
+
+    ``acquired_at`` is deliberately NOT part of this key. It is a freshness
+    stamp, not an input: the fallback and client-assisted fetches rebuild it
+    with ``datetime.now()`` on every request, so including it turned every
+    request into a miss and re-ran the assembly (302 ms local rebuild with
+    the model internals warm, 1.5-1.9 s per request measured on Render).
+    The window is keyed at hour resolution, so horizon labels never go stale.
+    """
+    anchor = "none"
+    if fetch.bins and fetch.bins[0].time_start is not None:
+        anchor = fetch.bins[0].time_start.strftime("%Y%m%d%H")
+    depths = ",".join(f"{b.depth_mm:.2f}" for b in fetch.bins)
+    return f"{'geo' if include_geo else 'bare'}:{fetch.status}:{anchor}:{depths}"
+
+
+def _with_freshness(states: dict, fetch: DelhiForecastFetch) -> dict:
+    """Rebuild the provenance block from THIS request's fetch.
+
+    The cache never serves an acquisition time, source or diagnostic string:
+    those describe the forecast fetched now, not the one that warmed the entry.
+    """
+    fresh = dict(states)
+    fresh["rainfall_status"] = fetch.status
+    fresh["rainfall_source"] = fetch.source
+    fresh["rainfall_acquired_at"] = (
+        fetch.acquired_at.isoformat() if fetch.acquired_at else None
+    )
+    fresh["diagnostics"] = list(fetch.diagnostics)
+    provenance = dict(fresh.get("provenance") or {})
+    provenance["rainfall"] = fetch.source
+    provenance["rainfall_status"] = fetch.status
+    fresh["provenance"] = provenance
+    return fresh
 
 
 def get_cached_live_states(
@@ -869,35 +909,41 @@ def get_cached_live_states(
     include_geo: bool = True,
     client_rainfall_mm: Optional[Sequence[float]] = None,
 ) -> dict:
-    """Live states keyed by forecast acquisition (deterministic; cached).
+    """Live states keyed by forecast inputs (deterministic; cached).
 
     The expensive part (surface structure + routing) is lru_cached in the
-    depth model; the per-horizon step runs are cached per forecast fetch so
+    depth model; the per-horizon step runs are cached per forecast window so
     repeated horizon clicks are instant.
     """
-    global _LIVE_STATES_CACHE_KEY
     if client_rainfall_mm is not None and len(client_rainfall_mm) >= 4:
         fetch = client_forecast_fetch(client_rainfall_mm)
-        key = f"client:{','.join(str(round(v, 2)) for v in client_rainfall_mm[:4])}"
     else:
         fetch = fetch_forecast_with_fallback(use_cache=use_cache)
-        key = f"{fetch.acquired_at.isoformat() if fetch.acquired_at else 'none'}:{fetch.status}"
-    if use_cache and _LIVE_STATES_CACHE_KEY == key and "states" in _LIVE_STATES_CACHE:
-        cached = _LIVE_STATES_CACHE["states"]
-        if include_geo:
-            return cached
-        # Geo-less variant for cheap polling (strip heavy arrays).
-        stripped = json.loads(json.dumps(cached))  # deep copy
-        for h in stripped.get("horizons", []):
-            h["depth_cells"] = []
-            h["depth_polygons"] = {"type": "FeatureCollection", "features": []}
-            if h.get("streets"):
-                h["streets"]["roads_geojson"] = {"type": "FeatureCollection", "features": []}
-                h["streets"]["intersections_geojson"] = {"type": "FeatureCollection", "features": []}
-        return stripped
+
+    if use_cache:
+        key = _live_states_cache_key(fetch, include_geo)
+        cached = _LIVE_STATES_CACHE.get(key)
+        if cached is None and not include_geo:
+            # Geo-less poll: derive from a warm geo entry instead of rebuilding.
+            warm = _LIVE_STATES_CACHE.get(_live_states_cache_key(fetch, True))
+            if warm is not None:
+                cached = json.loads(json.dumps(warm))  # deep copy
+                for h in cached.get("horizons", []):
+                    h["depth_cells"] = []
+                    h["depth_polygons"] = {
+                        "type": "FeatureCollection", "features": []}
+                    if h.get("streets"):
+                        h["streets"]["roads_geojson"] = {
+                            "type": "FeatureCollection", "features": []}
+                        h["streets"]["intersections_geojson"] = {
+                            "type": "FeatureCollection", "features": []}
+        if cached is not None:
+            return _with_freshness(cached, fetch)
+
     states = build_live_states(fetch, include_geo=include_geo)
-    _LIVE_STATES_CACHE_KEY = key
-    _LIVE_STATES_CACHE["states"] = states
+    _LIVE_STATES_CACHE[_live_states_cache_key(fetch, include_geo)] = states
+    while len(_LIVE_STATES_CACHE) > _LIVE_STATES_CACHE_MAX:
+        _LIVE_STATES_CACHE.pop(next(iter(_LIVE_STATES_CACHE)))
     return states
 
 
