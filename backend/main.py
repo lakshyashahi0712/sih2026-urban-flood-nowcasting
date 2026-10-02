@@ -120,18 +120,38 @@ def _warm_delhi_flood_caches() -> None:
         )
 
 
-def _warm_flood_caches_at_boot() -> None:
-    """Warm both city surfaces at startup, one at a time, V1 first.
+_WARM_SWITCH_BY_SURFACE = {
+    "mumbai": "FLOOD_WARM_ON_BOOT",
+    "delhi": "DELHI_WARM_ON_BOOT",
+}
 
-    V1 is the default launch surface, so it gets the CPU and the memory headroom
-    first; a parallel pair of builds is what turned a cold stampede into an OOM.
+
+def _warm_order() -> list:
+    """Which surface builds first at boot — only one can have the CPU.
+
+    Sequential because two parallel builds measured as an OOM on the 512 MB
+    tier, and because the order is the whole question: the surface that warms
+    second is the one whose first visitor queues behind the other's build. On
+    Render's 0.1 CPU a cold ?delhi boot measured 99 s to the first live-state,
+    ~51 s of which was Mumbai's build finishing before Delhi's started.
+
+    V1 is the default launch surface, so mumbai-first stays the default;
+    ``FLOOD_WARM_ORDER=delhi`` is what a Delhi capture wants set instead.
     """
-    if _warm_on_boot("FLOOD_WARM_ON_BOOT"):
-        _warm_mumbai_flood_caches()
-    # V2's build is heavier than V1's, so it has its own switch for operators
-    # running a tighter memory budget.
-    if _warm_on_boot("DELHI_WARM_ON_BOOT"):
-        _warm_delhi_flood_caches()
+    if os.environ.get("FLOOD_WARM_ORDER", "").strip().lower() == "delhi":
+        return ["delhi", "mumbai"]
+    return ["mumbai", "delhi"]
+
+
+def _warm_flood_caches_at_boot() -> None:
+    """Warm both city surfaces at startup, one at a time, in `_warm_order()`."""
+    for surface in _warm_order():
+        if not _warm_on_boot(_WARM_SWITCH_BY_SURFACE[surface]):
+            continue
+        if surface == "mumbai":
+            _warm_mumbai_flood_caches()
+        else:
+            _warm_delhi_flood_caches()
 
 
 @asynccontextmanager
