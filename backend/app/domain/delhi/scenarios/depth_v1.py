@@ -35,6 +35,7 @@ import numpy as np
 
 from backend.app.domain.delhi.surface import get_surface_structure
 from backend.app.domain.delhi.single_flight import single_flight_cached
+from backend.app.domain.delhi.structure_cache import disk_artifact
 from backend.app.domain.delhi.scenarios.config import (
     ScenarioDefinition,
     classify_depth_cm,
@@ -54,6 +55,7 @@ INLET_ROAD_MARGIN_M = 25.0  # cells within this distance of an OSM road host an 
 
 
 @single_flight_cached
+@disk_artifact("inlet_cells")
 def inlet_cell_indices() -> np.ndarray:
     """Window cells within INLET_ROAD_MARGIN_M of an OSM road (V1 inlet
     convention with road-based inlets; roads are real OSM data)."""

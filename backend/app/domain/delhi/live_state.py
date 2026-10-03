@@ -56,6 +56,7 @@ from backend.app.domain.delhi.scenarios.depth_v1 import (
     v1_depth_step_for_intensity,
 )
 from backend.app.domain.delhi.single_flight import single_flight_cached
+from backend.app.domain.delhi.structure_cache import disk_artifact
 from backend.app.domain.delhi.surface import get_surface_structure
 
 # IST = UTC+05:30 (matches the nowcast module's forecast window convention).
@@ -275,6 +276,7 @@ class RoadSegmentIndex:
 
 
 @single_flight_cached
+@disk_artifact("road_match_index")
 def _road_match_index():
     """Road segments + graph junctions with surface-window cell mapping.
 
