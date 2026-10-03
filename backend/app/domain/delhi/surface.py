@@ -42,6 +42,7 @@ from backend.app.domain.delhi.digital_twin.kushak_scenario_ensemble import (
 )
 from backend.app.domain.delhi.routing.risk import get_reach_corridor
 from backend.app.domain.delhi.single_flight import single_flight_cached
+from backend.app.domain.delhi.structure_cache import disk_artifact
 
 _REPO_ROOT = Path(__file__).resolve().parents[4]
 DEM_PATH = _REPO_ROOT / "data" / "delhi" / "derived" / "dem" / "kushak_enforced_dem_burn1m.tif"
@@ -78,6 +79,7 @@ class SurfaceRoutingStructure:
 
 
 @single_flight_cached
+@disk_artifact("surface_structure")
 def get_surface_structure() -> SurfaceRoutingStructure:
     """Deterministic D8 structure over the corridor window (cached)."""
     import rasterio
