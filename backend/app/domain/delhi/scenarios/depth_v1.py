@@ -73,17 +73,28 @@ def inlet_cell_indices() -> np.ndarray:
     data = _json.loads(
         (_repo / "backend" / "app" / "data" / "roads" / "delhi_kushak_roads.geojson").read_text(encoding="utf-8")
     )
-    # Roads are WGS84; the raster transform is UTM 43N - project first.
+    # Roads are WGS84; the raster transform is UTM 43N - project first, in ONE
+    # call for the whole network (per-feature calls cost ~10 s of GDAL
+    # environment churn against ~0.07 s batched; see routing/network.py).
     import rasterio.warp as rw
 
+    geoms = [
+        f["geometry"]["coordinates"] for f in data.get("features", [])
+        if len(f["geometry"]["coordinates"]) >= 2
+    ]
+    all_xs, all_ys = rw.transform(
+        "EPSG:4326", "EPSG:32643",
+        [c[0] for g in geoms for c in g],
+        [c[1] for g in geoms for c in g],
+    )
     lines = []
-    for feature in data.get("features", []):
-        coords = feature["geometry"]["coordinates"]
-        if len(coords) >= 2:
-            lons = [c[0] for c in coords]
-            lats = [c[1] for c in coords]
-            xs, ys = rw.transform("EPSG:4326", "EPSG:32643", lons, lats)
-            lines.append(LineString(zip(xs, ys)))
+    offset = 0
+    for g in geoms:
+        lines.append(
+            LineString(zip(all_xs[offset:offset + len(g)],
+                           all_ys[offset:offset + len(g)]))
+        )
+        offset += len(g)
     # Rasterize the road lines directly (no topological union - that is
     # prohibitively slow on a 9k-line network), then dilate the mask by
     # one cell (~30 m, the documented inlet margin at 30 m cells).
