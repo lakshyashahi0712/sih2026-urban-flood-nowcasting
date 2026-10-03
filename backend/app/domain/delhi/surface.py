@@ -113,58 +113,46 @@ def get_surface_structure() -> SurfaceRoutingStructure:
     n = cell_flat.size
     flat = np.full(width * height, np.inf)
     flat[cell_flat] = elev_win
+    win_rows = (cell_flat // width).astype(np.int64)
+    win_cols = (cell_flat % width).astype(np.int64)
+
+    # Both D8 passes run as numpy ops over one (n, 8) neighbour block instead
+    # of 2 x 8 x n Python iterations. Off-grid and out-of-window neighbours
+    # read as +inf, which is what `flat` already holds for non-window cells,
+    # so every comparison below behaves exactly as the guarded loop did.
+    nbr = np.asarray(D8, dtype=np.int64)
+    nbr_r = win_rows[:, None] + nbr[None, :, 0]
+    nbr_c = win_cols[:, None] + nbr[None, :, 1]
+    in_grid = (nbr_r >= 0) & (nbr_r < height) & (nbr_c >= 0) & (nbr_c < width)
+    nbr_flat_idx = np.where(in_grid, nbr_r * width + nbr_c, 0)
+    nbr_elev = np.where(in_grid, flat[nbr_flat_idx], np.inf)
+
     # Local depression depth per window cell: elevator minus the lowest
     # neighbor elevation (clamped >= 0). Used to BOUND standing water so a
     # cell with no outlet cannot report an unbounded column.
-    win_rows = (cell_flat // width).astype(np.int64)
-    win_cols = (cell_flat % width).astype(np.int64)
-    depression_cap_m = np.zeros(n)
-    for local_i in range(n):
-        r = int(win_rows[local_i])
-        c = int(win_cols[local_i])
-        lowest = elev_win[local_i]
-        for dr, dc in D8:
-            nr, nc = r + dr, c + dc
-            if 0 <= nr < height and 0 <= nc < width:
-                j = nr * width + nc
-                if np.isfinite(flat[j]) and flat[j] < lowest:
-                    lowest = flat[j]
-        depression_cap_m[local_i] = max(elev_win[local_i] - lowest, 0.0)
+    lowest = np.minimum(elev_win, nbr_elev.min(axis=1))
+    depression_cap_m = np.maximum(elev_win - lowest, 0.0)
 
-    win_rows = (cell_flat // width).astype(np.int64)
-    win_cols = (cell_flat % width).astype(np.int64)
-    local_index = {int(f): i for i, f in enumerate(cell_flat)}
+    local_of = np.full(width * height, -1, dtype=np.int64)
+    local_of[cell_flat] = np.arange(n)
+    nbr_local = np.where(in_grid, local_of[nbr_flat_idx], -1)
 
-    flow_to_local = np.full(n, -1, dtype=np.int64)
+    # Flow target is the lowest IN-WINDOW neighbour, ties broken by D8 order;
+    # np.argmin returns the first minimum, which is what `if zj < best_z` did.
+    cand_elev = np.where(nbr_local >= 0, nbr_elev, np.inf)
+    best_dir = np.argmin(cand_elev, axis=1)
+    rows = np.arange(n)
+    flow_to_local = np.where(
+        np.isfinite(cand_elev[rows, best_dir]),
+        nbr_local[rows, best_dir], -1,
+    ).astype(np.int64)
+
+    order = np.argsort(elev_win, kind="stable")[::-1]
     # True window-edge exits: a strictly lower neighbor exists but lies
     # OUTSIDE the window (the corridor continues downstream there).
     # Interior sinks (no lower neighbor at all) keep flow_to_local = -1
     # and edge_exit = False - they POND.
-    edge_exit = np.zeros(n, dtype=bool)
-    order = np.argsort(elev_win, kind="stable")[::-1]
-    for local_i in order:
-        r = int(win_rows[local_i])
-        c = int(win_cols[local_i])
-        z = elev_win[local_i]
-        best_local = -1
-        best_z = np.inf
-        has_lower_outside = False
-        for dr, dc in D8:
-            nr, nc = r + dr, c + dc
-            if not (0 <= nr < height and 0 <= nc < width):
-                continue
-            j = nr * width + nc
-            zj = flat[j]
-            if zj < z and j not in local_index:
-                has_lower_outside = True
-                continue
-            if j not in local_index:
-                continue
-            if zj < best_z:
-                best_z = zj
-                best_local = local_index[j]
-        flow_to_local[local_i] = best_local
-        edge_exit[local_i] = has_lower_outside and best_local < 0
+    edge_exit = ((nbr_elev < elev_win[:, None]) & (nbr_local < 0)).any(axis=1)
 
     return SurfaceRoutingStructure(
         cell_flat_idx=cell_flat,
