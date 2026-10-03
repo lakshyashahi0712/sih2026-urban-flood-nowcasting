@@ -131,9 +131,18 @@ def _warm_order() -> list:
 
     Sequential because two parallel builds measured as an OOM on the 512 MB
     tier, and because the order is the whole question: the surface that warms
-    second is the one whose first visitor queues behind the other's build. On
-    Render's 0.1 CPU a cold ?delhi boot measured 99 s to the first live-state,
-    ~51 s of which was Mumbai's build finishing before Delhi's started.
+    second is the one whose first visitor queues behind the other's build.
+
+    Measured on Render's 0.1 CPU, same commit, first cold visitor polled every
+    5 s through a deploy switchover: mumbai-first serves its first Delhi
+    live-state in 47.4 s (Mumbai warms in 10.4 s, Delhi's 45.3 s build starts
+    only after), delhi-first in 36.0 s. The win is the other surface's warm
+    time, ~11 s — not the ~50 s a cold-spin-up platform hold makes it look
+    like, which is what an earlier version of this comment claimed.
+
+    Delhi's build is since been cut to 18.2 s (same harness, first cold visitor
+    19.9 s), so the knob now trades ~10.6 s — Mumbai's warm time — not ~11 s.
+    The direction is unchanged and still worth flipping for a Delhi capture.
 
     V1 is the default launch surface, so mumbai-first stays the default;
     ``FLOOD_WARM_ORDER=delhi`` is what a Delhi capture wants set instead.
